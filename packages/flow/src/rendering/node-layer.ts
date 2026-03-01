@@ -1,7 +1,7 @@
-import { html, attr, MapSignal, Fragment } from '@tempots/dom'
+import { html, attr, KeyedForEach } from '@tempots/dom'
 import type { TNode } from '@tempots/dom'
 import type { Signal, Prop } from '@tempots/core'
-import type { Graph } from '../types/graph'
+import type { Graph, GraphNode } from '../types/graph'
 import type { Position, Dimensions } from '../types/layout'
 import type { InteractionState } from '../types/interaction'
 import type { NodeRenderer } from '../types/config'
@@ -21,21 +21,22 @@ export function NodeLayer<N, E>(
   return html.div(
     attr.class('flow-node-layer'),
 
-    MapSignal(graph, (g) =>
-      Fragment(
-        ...g.nodes.map((node) => {
-          const nodePosition = positions.map((p) => p.get(node.id) ?? ZERO_POS)
+    KeyedForEach(
+      graph.map((g) => g.nodes as GraphNode<N>[]),
+      (node) => node.id,
+      (nodeSignal) => {
+        const node = nodeSignal.get()
+        const nodePosition = positions.map((p) => p.get(node.id) ?? ZERO_POS)
 
-          return NodeWrapper(
-            node,
-            nodePosition,
-            interactionState,
-            onInteraction,
-            onDimensionsChange,
-            nodeRenderer,
-          )
-        }),
-      ),
+        return NodeWrapper(
+          node,
+          nodePosition,
+          interactionState,
+          onInteraction,
+          onDimensionsChange,
+          nodeRenderer,
+        )
+      },
     ),
   )
 }
