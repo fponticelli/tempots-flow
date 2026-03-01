@@ -15,7 +15,8 @@
     "lint": "pnpm -r run lint",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "pnpm build && pnpm test && pnpm lint && pnpm format:check",
+    "typecheck": "pnpm --filter @tempots/flow run typecheck",
+    "check": "pnpm build && pnpm typecheck && pnpm test && pnpm lint && pnpm format:check",
     "clean": "pnpm -r run clean"
   },
   "devDependencies": {
