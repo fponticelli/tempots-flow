@@ -58,6 +58,12 @@ export type {
   FlowInstance,
 } from './types/config'
 
+export type { PortTypeConfig } from './types/config'
+
 export type { FlowEvents } from './types/events'
 
 export type { DiagnosticSeverity, DiagnosticTarget, Diagnostic } from './types/validation'
+
+// Validators
+export type { Validator } from './validators/index'
+export { portTypeCheck, portCardinality, requiredPorts, acyclic, compose } from './validators/index'

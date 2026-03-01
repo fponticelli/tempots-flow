@@ -31,6 +31,7 @@ export function NodeLayer<N, E>(
         return NodeWrapper(
           node,
           nodePosition,
+          graph,
           interactionState,
           onInteraction,
           onDimensionsChange,

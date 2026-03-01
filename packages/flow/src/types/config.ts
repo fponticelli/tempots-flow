@@ -53,6 +53,15 @@ export interface LayoutAlgorithm {
   ): ReadonlyMap<string, Position>
 }
 
+// --- Port type system ---
+
+export interface PortTypeConfig {
+  readonly isCompatible?: (
+    sourceType: string | undefined,
+    targetType: string | undefined,
+  ) => boolean
+}
+
 // --- Main config ---
 
 export interface FlowConfig<N, E> {
@@ -76,6 +85,10 @@ export interface FlowConfig<N, E> {
   readonly nodesSelectable?: boolean
   readonly edgesSelectable?: boolean
   readonly multiSelectionKey?: 'shift' | 'meta' | 'ctrl'
+
+  // Connection
+  readonly portTypes?: PortTypeConfig
+  readonly connectionSnapRadius?: number
 
   // Snap
   readonly snapToGrid?: boolean

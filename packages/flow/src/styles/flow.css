@@ -36,6 +36,10 @@
   --flow-edge-hover-width: 3px;
   --flow-edge-selected-color: #ffffff;
 
+  /* Connection preview */
+  --flow-connection-valid-color: #4caf50;
+  --flow-connection-invalid-color: #f44336;
+
   /* Motion */
   --flow-transition-duration: 200ms;
   --flow-transition-easing: cubic-bezier(0.4, 0, 0.2, 1);
@@ -198,6 +202,42 @@
   fill: none;
   cursor: pointer;
   pointer-events: stroke;
+}
+
+/* Connection preview layer */
+.flow-connection-preview-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.flow-connection-preview-path {
+  stroke: var(--flow-edge-color);
+  stroke-width: 2px;
+  stroke-dasharray: 8 4;
+  fill: none;
+  opacity: 0.7;
+}
+
+.flow-connection-preview--valid .flow-connection-preview-path {
+  stroke: var(--flow-connection-valid-color);
+  opacity: 1;
+}
+
+.flow-connection-preview--invalid .flow-connection-preview-path {
+  stroke: var(--flow-connection-invalid-color);
+  opacity: 0.5;
+}
+
+/* Port hover during connection */
+.flow-port--hovered .flow-port-dot {
+  transform: scale(var(--flow-port-hover-scale));
+  box-shadow: 0 0 6px var(--flow-port-border);
 }
 
 /* Overlay layer */

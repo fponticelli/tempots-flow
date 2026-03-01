@@ -2,7 +2,7 @@ import { html, attr, on, style, WithElement, OnDispose } from '@tempots/dom'
 import type { TNode } from '@tempots/dom'
 import type { Signal, Prop } from '@tempots/core'
 import { signal } from '@tempots/core'
-import type { GraphNode } from '../types/graph'
+import type { Graph, GraphNode, PortRef } from '../types/graph'
 import type { Position, Dimensions } from '../types/layout'
 import type { InteractionState } from '../types/interaction'
 import type { NodeRenderContext, PortWithState } from '../types/config'
@@ -12,9 +12,10 @@ import { Port } from './port'
 import { defaultNodeRenderer } from './default-node-renderer'
 import type { NodeRenderer } from '../types/config'
 
-export function NodeWrapper<N>(
+export function NodeWrapper<N, E>(
   node: GraphNode<N>,
   position: Signal<Position>,
+  graph: Signal<Graph<N, E>>,
   interactionState: Prop<InteractionState>,
   onInteraction: (event: PointerEvent, target: InteractionTarget) => void,
   onDimensionsChange: (nodeId: string, dims: Dimensions) => void,
@@ -29,23 +30,50 @@ export function NodeWrapper<N>(
 
   const render = nodeRenderer ?? defaultNodeRenderer
 
+  const portStates: readonly PortWithState[] = node.ports.map((portDef) => {
+    const connectionCount = graph.map(
+      (g) =>
+        g.edges.filter(
+          (e) =>
+            (e.source.nodeId === nodeId && e.source.portId === portDef.id) ||
+            (e.target.nodeId === nodeId && e.target.portId === portDef.id),
+        ).length,
+    )
+    const isConnected = connectionCount.map((c) => c > 0)
+
+    return { definition: portDef, isConnected, connectionCount }
+  })
+
+  const portStateMap = new Map<string, PortWithState>()
+  for (const ps of portStates) {
+    portStateMap.set(ps.definition.id, ps)
+  }
+
+  function onPortHover(portRef: PortRef | null) {
+    interactionState.update((s) => ({ ...s, hoveredPort: portRef }))
+  }
+
   const renderContext: NodeRenderContext = {
     isSelected,
     isHovered,
     isDragging,
     diagnostics: signal([] as readonly Diagnostic[]),
     port: (portId: string) => {
-      const portDef = node.ports.find((p) => p.id === portId)
-      if (!portDef) return null
-      return Port(portDef, signal(false))
+      const portState = portStateMap.get(portId)
+      if (!portState) return null
+      const portIsHovered = interactionState.map(
+        (s): boolean => s.hoveredPort?.nodeId === nodeId && s.hoveredPort?.portId === portId,
+      )
+      return Port(
+        portState.definition,
+        nodeId,
+        portState.isConnected,
+        portIsHovered,
+        onInteraction,
+        onPortHover,
+      )
     },
-    ports: signal(
-      node.ports.map((p) => ({
-        definition: p,
-        isConnected: signal(false),
-        connectionCount: signal(0),
-      })) as readonly PortWithState[],
-    ),
+    ports: signal(portStates),
   }
 
   return html.div(

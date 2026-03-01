@@ -48,6 +48,8 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     config,
     graphProp,
     layoutEngine.setNodePosition,
+    layoutEngine.positions,
+    layoutEngine.dimensions,
   )
 
   // --- Derived selection signals ---
@@ -68,6 +70,7 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     interactionManager,
     onDimensionsChange,
     setContainerRect,
+    edgeRouting,
     config.nodeRenderer,
   )
 

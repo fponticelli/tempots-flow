@@ -3,12 +3,13 @@ import type { TNode } from '@tempots/dom'
 import type { Signal, Prop } from '@tempots/core'
 import type { Graph } from '../types/graph'
 import type { Viewport, ComputedEdgePath, Position, Dimensions } from '../types/layout'
-import type { NodeRenderer } from '../types/config'
+import type { NodeRenderer, EdgeRoutingStrategy } from '../types/config'
 import type { InteractionManager, InteractionTarget } from '../interaction/interaction-manager'
 import { handleBackgroundClick } from '../interaction/selection-handler'
 import { TransformLayer } from './transform-layer'
 import { EdgeLayer } from './edge-layer'
 import { NodeLayer } from './node-layer'
+import { ConnectionPreview } from './connection-preview'
 import { OverlayLayer } from './overlay-layer'
 
 export function FlowViewport<N, E>(
@@ -19,6 +20,7 @@ export function FlowViewport<N, E>(
   interactionManager: InteractionManager,
   onDimensionsChange: (nodeId: string, dims: Dimensions) => void,
   setContainerRect: (getter: () => DOMRect) => void,
+  edgeRouting: EdgeRoutingStrategy,
   nodeRenderer?: NodeRenderer<N>,
 ): TNode {
   const { state: interactionState } = interactionManager
@@ -74,6 +76,7 @@ export function FlowViewport<N, E>(
         onDimensionsChange,
         nodeRenderer,
       ),
+      ConnectionPreview(interactionState, edgeRouting),
     ),
 
     OverlayLayer(),

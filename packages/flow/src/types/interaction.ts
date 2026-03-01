@@ -14,6 +14,7 @@ export interface DragState {
 export interface ConnectionState {
   readonly sourcePort: PortRef
   readonly sourceSide: PortSide
+  readonly sourcePosition: Position
   readonly currentPosition: Position
   readonly targetPort: PortRef | null
   readonly isValid: boolean

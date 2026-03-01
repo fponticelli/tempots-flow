@@ -2,14 +2,20 @@ import { prop } from '@tempots/core'
 import type { Prop, Signal } from '@tempots/core'
 import type { InteractionState } from '../types/interaction'
 import { createInitialInteractionState } from '../types/interaction'
-import type { Position, Viewport } from '../types/layout'
+import type { Position, Viewport, Dimensions } from '../types/layout'
 import type { FlowConfig } from '../types/config'
 import type { Graph, GraphNode, GraphEdge } from '../types/graph'
 import { handlePanStart, handlePanMove, handlePanEnd } from './pan-handler'
 import { handleZoom } from './zoom-handler'
 import { handleDragStart, handleDragMove, handleDragEnd } from './drag-handler'
+import {
+  handleConnectionStart,
+  handleConnectionMove,
+  handleConnectionEnd,
+} from './connection-handler'
 import { handleNodeClick, handleEdgeClick } from './selection-handler'
 import { screenToGraph } from '../core/coordinate-utils'
+import { computePortPositionsForNode } from '../edges/port-positions'
 
 export type InteractionTarget =
   | { readonly type: 'viewport' }
@@ -31,6 +37,8 @@ export function createInteractionManager<N, E>(
   config: FlowConfig<N, E>,
   graphSignal: Signal<Graph<N, E>>,
   setNodePosition: (nodeId: string, position: Position) => void,
+  positions: Signal<ReadonlyMap<string, Position>>,
+  dimensions: Signal<ReadonlyMap<string, Dimensions>>,
 ): InteractionManager {
   const state = prop(createInitialInteractionState())
 
@@ -88,6 +96,27 @@ export function createInteractionManager<N, E>(
         )
         return
       }
+
+      if (target.type === 'port') {
+        const node = graphSignal.value.nodes.find((n) => n.id === target.nodeId)
+        if (!node) return
+
+        const nodePos = positions.value.get(target.nodeId)
+        const nodeDims = dimensions.value.get(target.nodeId)
+        if (!nodePos || !nodeDims) return
+
+        const portPositions = computePortPositionsForNode(nodePos, nodeDims, node.ports)
+        const portPos = portPositions.get(target.portId)
+        if (!portPos) return
+
+        handleConnectionStart(
+          state,
+          { nodeId: target.nodeId, portId: target.portId },
+          portPos.side,
+          { x: portPos.x, y: portPos.y },
+        )
+        return
+      }
     },
 
     handlePointerMove(event: PointerEvent) {
@@ -115,6 +144,19 @@ export function createInteractionManager<N, E>(
         }))
         return
       }
+
+      if (mode === 'connecting') {
+        handleConnectionMove(
+          state,
+          graphPos(event),
+          graphSignal.value,
+          positions.value,
+          dimensions.value,
+          config.connectionSnapRadius ?? 20,
+          config.portTypes,
+        )
+        return
+      }
     },
 
     handlePointerUp(_event: PointerEvent) {
@@ -130,9 +172,9 @@ export function createInteractionManager<N, E>(
         return
       }
 
-      // If still idle and clicked on viewport background
-      if (mode === 'idle') {
-        // Background click handled by pointerdown target check
+      if (mode === 'connecting') {
+        handleConnectionEnd(state, config.events)
+        return
       }
     },
 
