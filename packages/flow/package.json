@@ -1,0 +1,61 @@
+{
+  "name": "@tempots/flow",
+  "version": "0.1.0",
+  "description": "Node-based flow editor for the Tempo ecosystem",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./layouts": {
+      "types": "./dist/layouts/index.d.ts",
+      "import": "./dist/layouts/index.js",
+      "require": "./dist/layouts/index.cjs"
+    },
+    "./edges": {
+      "types": "./dist/edges/index.d.ts",
+      "import": "./dist/edges/index.js",
+      "require": "./dist/edges/index.cjs"
+    },
+    "./validators": {
+      "types": "./dist/validators/index.d.ts",
+      "import": "./dist/validators/index.js",
+      "require": "./dist/validators/index.cjs"
+    },
+    "./css": "./dist/flow.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "lint": "eslint src/",
+    "clean": "rm -rf dist"
+  },
+  "peerDependencies": {
+    "@tempots/core": "^3.0.1"
+  },
+  "dependencies": {
+    "@tempots/dom": "^37.0.4",
+    "@tempots/std": "^0.26.1",
+    "@tempots/ui": "^16.0.1"
+  },
+  "devDependencies": {
+    "@tempots/core": "^3.0.1",
+    "jsdom": "^26.1.0",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.2",
+    "vitest": "^3.1.1"
+  }
+}

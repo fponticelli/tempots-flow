@@ -1,0 +1,7 @@
+node_modules/
+dist/
+*.tgz
+.turbo/
+coverage/
+.DS_Store
+*.local

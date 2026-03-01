@@ -1,0 +1,233 @@
+/* @tempots/flow — Default Theme */
+
+.flow-viewport {
+  /* Layout */
+  --flow-viewport-bg: #1a1a2e;
+  --flow-grid-color: rgba(255, 255, 255, 0.05);
+  --flow-grid-size: 20px;
+
+  /* Nodes */
+  --flow-node-bg: #16213e;
+  --flow-node-border: #0f3460;
+  --flow-node-border-radius: 8px;
+  --flow-node-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --flow-node-color: #e0e0e0;
+  --flow-node-header-bg: #0f3460;
+  --flow-node-header-color: #ffffff;
+  --flow-node-min-width: 180px;
+  --flow-node-padding: 8px;
+
+  /* Selection */
+  --flow-selection-border: #53a8ff;
+  --flow-selection-bg: rgba(83, 168, 255, 0.1);
+  --flow-node-selected-border: #53a8ff;
+  --flow-node-selected-shadow: 0 0 0 2px rgba(83, 168, 255, 0.4);
+
+  /* Ports */
+  --flow-port-size: 12px;
+  --flow-port-bg: #0f3460;
+  --flow-port-border: #53a8ff;
+  --flow-port-connected-bg: #53a8ff;
+  --flow-port-hover-scale: 1.3;
+
+  /* Edges */
+  --flow-edge-color: #53a8ff;
+  --flow-edge-width: 2px;
+  --flow-edge-hover-width: 3px;
+  --flow-edge-selected-color: #ffffff;
+
+  /* Motion */
+  --flow-transition-duration: 200ms;
+  --flow-transition-easing: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Viewport */
+.flow-viewport {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--flow-viewport-bg);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+/* Transform layer */
+.flow-transform-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+/* Edge layer (SVG) */
+.flow-edge-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.flow-edge-layer > * {
+  pointer-events: auto;
+}
+
+/* Node layer */
+.flow-node-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* Node wrapper */
+.flow-node-wrapper {
+  position: absolute;
+  cursor: grab;
+  transition: box-shadow var(--flow-transition-duration) var(--flow-transition-easing);
+}
+
+.flow-node-wrapper:active {
+  cursor: grabbing;
+}
+
+/* Node */
+.flow-node {
+  min-width: var(--flow-node-min-width);
+  background: var(--flow-node-bg);
+  border: 1px solid var(--flow-node-border);
+  border-radius: var(--flow-node-border-radius);
+  box-shadow: var(--flow-node-shadow);
+  color: var(--flow-node-color);
+  overflow: hidden;
+}
+
+.flow-node--selected .flow-node {
+  border-color: var(--flow-node-selected-border);
+  box-shadow: var(--flow-node-selected-shadow);
+}
+
+/* Node header */
+.flow-node-header {
+  padding: var(--flow-node-padding);
+  background: var(--flow-node-header-bg);
+  color: var(--flow-node-header-color);
+  font-size: 0.85em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Node body */
+.flow-node-body {
+  padding: var(--flow-node-padding);
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Ports */
+.flow-node-ports {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.flow-node-ports--output {
+  align-items: flex-end;
+}
+
+.flow-port {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: crosshair;
+}
+
+.flow-port--output {
+  flex-direction: row-reverse;
+}
+
+.flow-port-dot {
+  width: var(--flow-port-size);
+  height: var(--flow-port-size);
+  border-radius: 50%;
+  background: var(--flow-port-bg);
+  border: 2px solid var(--flow-port-border);
+  transition: transform var(--flow-transition-duration) var(--flow-transition-easing);
+  flex-shrink: 0;
+}
+
+.flow-port:hover .flow-port-dot {
+  transform: scale(var(--flow-port-hover-scale));
+}
+
+.flow-port--connected .flow-port-dot {
+  background: var(--flow-port-connected-bg);
+}
+
+.flow-port-label {
+  font-size: 0.75em;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+
+/* Edges */
+.flow-edge {
+  stroke: var(--flow-edge-color);
+  stroke-width: var(--flow-edge-width);
+  fill: none;
+  transition: stroke-width var(--flow-transition-duration) var(--flow-transition-easing);
+}
+
+.flow-edge--selected {
+  stroke: var(--flow-edge-selected-color);
+}
+
+.flow-edge--hovered {
+  stroke-width: var(--flow-edge-hover-width);
+}
+
+.flow-edge-hitbox {
+  stroke: transparent;
+  stroke-width: 12px;
+  fill: none;
+  cursor: pointer;
+  pointer-events: stroke;
+}
+
+/* Overlay layer */
+.flow-overlay-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* UI layer */
+.flow-ui-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.flow-ui-layer > * {
+  pointer-events: auto;
+}
+
+/* Selection box */
+.flow-selection-box {
+  position: absolute;
+  border: 1px solid var(--flow-selection-border);
+  background: var(--flow-selection-bg);
+  pointer-events: none;
+}
