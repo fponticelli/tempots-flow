@@ -15,6 +15,97 @@
       #app {
         width: 100%;
         height: 100vh;
+        font-family:
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          'Helvetica Neue',
+          Arial,
+          sans-serif;
+      }
+    </style>
+    <style>
+      /* --- Port shape variants --- */
+      .visual-port-square {
+        border-radius: 2px !important;
+      }
+      .visual-port-diamond {
+        border-radius: 2px !important;
+        transform: translateY(-50%) rotate(45deg) !important;
+        width: 10px !important;
+        height: 10px !important;
+      }
+      .flow-port:hover .visual-port-diamond {
+        transform: translateY(-50%) rotate(45deg) scale(var(--flow-port-hover-scale)) !important;
+      }
+      .visual-port-connected {
+        box-shadow: 0 0 6px currentColor;
+      }
+
+      /* --- Type badge --- */
+      .visual-port-badge {
+        font-size: 0.6em;
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        padding: 1px 4px;
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.06);
+        opacity: 0.7;
+        line-height: 1;
+      }
+
+      /* --- Node content area --- */
+      .visual-node-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 4px 8px;
+        min-width: 80px;
+      }
+      .visual-value-display {
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        font-size: 1.2em;
+        font-weight: 700;
+        color: #f0a500;
+        text-align: center;
+      }
+      .visual-hex-display {
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        font-size: 0.75em;
+        color: rgba(255, 255, 255, 0.7);
+      }
+      .visual-formula {
+        align-items: center;
+      }
+      .visual-formula-text {
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        font-size: 1em;
+        font-weight: 600;
+        color: #e07c24;
+        letter-spacing: 0.1em;
+      }
+      .visual-texture-preview {
+        border-radius: 4px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .visual-output-preview {
+        min-width: 140px;
+      }
+
+      /* --- Input styling --- */
+      .visual-node-content input[type='range'] {
+        width: 100%;
+        accent-color: #f0a500;
+      }
+      .visual-node-content input[type='color'] {
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 4px;
+        padding: 0;
+        cursor: pointer;
+        background: transparent;
       }
     </style>
   </head>

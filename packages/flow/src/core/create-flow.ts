@@ -347,6 +347,8 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     transitioning: layoutEngine.transitioning,
     allowManualPositioning: layoutEngine.allowManualPositioning,
     nodeRenderer: config.nodeRenderer,
+    edgeRenderer: config.edgeRenderer,
+    portRenderer: config.portRenderer,
     background: effectiveBackground,
     controls: config.controls,
     minimap: config.minimap,

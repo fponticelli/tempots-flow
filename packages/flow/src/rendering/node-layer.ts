@@ -4,7 +4,7 @@ import type { Signal } from '@tempots/core'
 import type { Graph, GraphNode, PortRef } from '../types/graph'
 import type { Position, Dimensions } from '../types/layout'
 import type { InteractionState } from '../types/interaction'
-import type { NodeRenderer } from '../types/config'
+import type { NodeRenderer, PortRenderer } from '../types/config'
 import type { InteractionTarget } from '../interaction/interaction-manager'
 import { NodeWrapper } from './node-wrapper'
 
@@ -20,6 +20,7 @@ export function NodeLayer<N, E>(
   onDimensionsChange: (nodeId: string, dims: Dimensions) => void,
   transitioning: Signal<boolean>,
   nodeRenderer?: NodeRenderer<N>,
+  portRenderer?: PortRenderer,
 ): TNode {
   return html.div(
     attr.class('flow-node-layer'),
@@ -44,6 +45,7 @@ export function NodeLayer<N, E>(
           onDimensionsChange,
           transitioning,
           nodeRenderer,
+          portRenderer,
         )
       },
     ),

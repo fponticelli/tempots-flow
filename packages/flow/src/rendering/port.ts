@@ -2,7 +2,18 @@ import { html, attr, on, dataAttr, Ensure } from '@tempots/dom'
 import type { TNode } from '@tempots/dom'
 import type { Signal } from '@tempots/core'
 import type { PortDefinition, PortRef } from '../types/graph'
+import type { PortRenderer } from '../types/config'
 import type { InteractionTarget } from '../interaction/interaction-manager'
+
+function defaultPortContent(definition: Signal<PortDefinition>): TNode {
+  return [
+    html.div(attr.class('flow-port-dot')),
+    Ensure(definition.$.label, (label) => html.span(attr.class('flow-port-label'), label)),
+  ]
+}
+
+export const defaultPortRenderer: PortRenderer = (definition, _context) =>
+  defaultPortContent(definition)
 
 export function Port(
   definition: Signal<PortDefinition>,
@@ -11,6 +22,7 @@ export function Port(
   isHovered: Signal<boolean>,
   onInteraction: (event: PointerEvent, target: InteractionTarget) => void,
   setHoveredPort: (portRef: PortRef | null) => void,
+  portRenderer?: PortRenderer,
 ): TNode {
   return html.div(
     attr.class('flow-port'),
@@ -31,7 +43,8 @@ export function Port(
       setHoveredPort(null)
     }),
 
-    html.div(attr.class('flow-port-dot')),
-    Ensure(definition.$.label, (label) => html.span(attr.class('flow-port-label'), label)),
+    portRenderer
+      ? portRenderer(definition, { isConnected, isHovered, nodeId })
+      : defaultPortContent(definition),
   )
 }

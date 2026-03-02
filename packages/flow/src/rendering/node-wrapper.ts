@@ -9,7 +9,7 @@ import type { InteractionTarget } from '../interaction/interaction-manager'
 import type { Diagnostic } from '../types/validation'
 import { Port } from './port'
 import { defaultNodeRenderer } from './default-node-renderer'
-import type { NodeRenderer } from '../types/config'
+import type { NodeRenderer, PortRenderer } from '../types/config'
 import { ElementRect } from '@tempots/ui'
 
 export function NodeWrapper<N, E>(
@@ -23,6 +23,7 @@ export function NodeWrapper<N, E>(
   onDimensionsChange: (nodeId: string, dims: Dimensions) => void,
   transitioning: Signal<boolean>,
   nodeRenderer?: NodeRenderer<N>,
+  portRenderer?: PortRenderer,
 ): TNode {
   const nodeId = nodeSignal.$.id
   const isSelected = computedOf(interactionState, nodeId)((s, id) => s.selectedNodeIds.has(id))
@@ -66,7 +67,15 @@ export function NodeWrapper<N, E>(
       )((s, nid, id): boolean => s.hoveredPort?.nodeId === nid && s.hoveredPort?.portId === id)
       const portDef = computedOf(nodeSignal, pid)((n, id) => n.ports.find((p) => p.id === id))
       return Ensure(portDef, (def) =>
-        Port(def, nodeId, portIsConnected, portIsHovered, onInteraction, setHoveredPort),
+        Port(
+          def,
+          nodeId,
+          portIsConnected,
+          portIsHovered,
+          onInteraction,
+          setHoveredPort,
+          portRenderer,
+        ),
       )
     },
     ports: portStates,

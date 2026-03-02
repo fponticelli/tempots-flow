@@ -2,7 +2,7 @@
 
 import type { Signal, Prop, Value } from '@tempots/core'
 import type { TNode, Renderable } from '@tempots/dom'
-import type { Graph, GraphNode, PortDefinition } from './graph'
+import type { Graph, GraphNode, GraphEdge, PortDefinition } from './graph'
 import type {
   Position,
   Dimensions,
@@ -35,6 +35,25 @@ export interface PortWithState {
 
 // --- Edge rendering ---
 
+export type EdgeRenderer<E> = (edge: Signal<GraphEdge<E>>, context: EdgeRenderContext) => TNode
+
+export interface EdgeRenderContext {
+  readonly isSelected: Signal<boolean>
+  readonly isHovered: Signal<boolean>
+  readonly path: Signal<ComputedEdgePath>
+  readonly angle: Signal<number>
+}
+
+export interface EdgeOverlayConfig {
+  readonly content: TNode
+  /** Position along edge: 0 = source, 0.5 = center, 1 = target. Default: 0.5 */
+  readonly position?: number
+  /** Perpendicular offset in px. Default: 0 */
+  readonly offset?: number
+  /** Rotation: 'horizontal' (no rotation) or 'path' (follows edge direction). Default: 'horizontal' */
+  readonly orientation?: 'horizontal' | 'path'
+}
+
 export interface EdgeRoutingStrategy {
   computePath(params: EdgeRoutingParams): string
 }
@@ -42,6 +61,16 @@ export interface EdgeRoutingStrategy {
 export interface EdgeRoutingParams {
   readonly source: ComputedPortPosition
   readonly target: ComputedPortPosition
+}
+
+// --- Port rendering ---
+
+export type PortRenderer = (port: Signal<PortDefinition>, context: PortRenderContext) => TNode
+
+export interface PortRenderContext {
+  readonly isConnected: Signal<boolean>
+  readonly isHovered: Signal<boolean>
+  readonly nodeId: Signal<string>
 }
 
 // --- Layout ---
@@ -110,6 +139,8 @@ export interface PortTypeConfig {
 export interface FlowConfig<N, E> {
   readonly graph: Prop<Graph<N, E>>
   readonly nodeRenderer?: NodeRenderer<N>
+  readonly edgeRenderer?: EdgeRenderer<E>
+  readonly portRenderer?: PortRenderer
   readonly edgeRouting?: EdgeRoutingStrategy
   readonly layout?: LayoutAlgorithm
   readonly initialPositions?: ReadonlyMap<string, Position>

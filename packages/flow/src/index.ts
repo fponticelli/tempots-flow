@@ -52,6 +52,11 @@ export type {
   NodeRenderer,
   NodeRenderContext,
   PortWithState,
+  EdgeRenderer,
+  EdgeRenderContext,
+  EdgeOverlayConfig,
+  PortRenderer,
+  PortRenderContext,
   EdgeRoutingStrategy,
   EdgeRoutingParams,
   LayoutAlgorithm,
@@ -85,6 +90,11 @@ export type {
   PartialAnimationConfig,
 } from './animation/animation-config'
 export { resolveAnimationConfig } from './animation/animation-config'
+
+// Default renderers & edge overlay
+export { defaultEdgeRenderer } from './rendering/default-edge-renderer'
+export { defaultPortRenderer } from './rendering/port'
+export { createEdgeOverlay, computeEdgeAngle } from './rendering/edge-overlay'
 
 export type { DiagnosticSeverity, DiagnosticTarget, Diagnostic } from './types/validation'
 

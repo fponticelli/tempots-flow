@@ -6,6 +6,8 @@ import type { PortRef } from '../types/graph'
 import type { Viewport, ComputedEdgePath, Position, Dimensions } from '../types/layout'
 import type {
   NodeRenderer,
+  EdgeRenderer,
+  PortRenderer,
   EdgeRoutingStrategy,
   BackgroundConfig,
   BackgroundType,
@@ -35,6 +37,8 @@ export interface FlowViewportOptions<N, E> {
   readonly transitioning: Signal<boolean>
   readonly allowManualPositioning: Signal<boolean>
   readonly nodeRenderer?: NodeRenderer<N>
+  readonly edgeRenderer?: EdgeRenderer<E>
+  readonly portRenderer?: PortRenderer
   readonly background?: BackgroundConfig | false
   readonly controls?: ControlsConfig | false
   readonly minimap?: MinimapConfig | false
@@ -140,7 +144,15 @@ export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderab
 
     TransformLayer(
       viewport,
-      EdgeLayer(edgePaths, interactionState, handleInteraction, setHoveredEdge, transitioning),
+      EdgeLayer(
+        edgePaths,
+        graph,
+        interactionState,
+        handleInteraction,
+        setHoveredEdge,
+        transitioning,
+        options.edgeRenderer,
+      ),
       NodeLayer(
         graph,
         positions,
@@ -151,6 +163,7 @@ export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderab
         onDimensionsChange,
         transitioning,
         nodeRenderer,
+        options.portRenderer,
       ),
       ConnectionPreview(interactionState, edgeRouting),
       SelectionBox(interactionState),
