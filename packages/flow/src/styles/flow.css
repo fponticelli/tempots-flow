@@ -101,13 +101,14 @@
 
 /* Node */
 .flow-node {
+  position: relative;
   min-width: var(--flow-node-min-width);
   background: var(--flow-node-bg);
   border: 1px solid var(--flow-node-border);
   border-radius: var(--flow-node-border-radius);
   box-shadow: var(--flow-node-shadow);
   color: var(--flow-node-color);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .flow-node--selected .flow-node {
@@ -146,9 +147,11 @@
 }
 
 .flow-port {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
+  min-height: calc(var(--flow-port-size) + 4px);
   cursor: crosshair;
 }
 
@@ -157,17 +160,29 @@
 }
 
 .flow-port-dot {
+  position: absolute;
+  top: 50%;
   width: var(--flow-port-size);
   height: var(--flow-port-size);
   border-radius: 50%;
   background: var(--flow-port-bg);
   border: 2px solid var(--flow-port-border);
   transition: transform var(--flow-transition-duration) var(--flow-transition-easing);
-  flex-shrink: 0;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+/* Position port dots at node edges */
+.flow-port--input .flow-port-dot {
+  left: calc(-1 * var(--flow-node-padding) - var(--flow-port-size) / 2 - 3px);
+}
+
+.flow-port--output .flow-port-dot {
+  right: calc(-1 * var(--flow-node-padding) - var(--flow-port-size) / 2 - 3px);
 }
 
 .flow-port:hover .flow-port-dot {
-  transform: scale(var(--flow-port-hover-scale));
+  transform: translateY(-50%) scale(var(--flow-port-hover-scale));
 }
 
 .flow-port--connected .flow-port-dot {
@@ -236,7 +251,7 @@
 
 /* Port hover during connection */
 .flow-port--hovered .flow-port-dot {
-  transform: scale(var(--flow-port-hover-scale));
+  transform: translateY(-50%) scale(var(--flow-port-hover-scale));
   box-shadow: 0 0 6px var(--flow-port-border);
 }
 
