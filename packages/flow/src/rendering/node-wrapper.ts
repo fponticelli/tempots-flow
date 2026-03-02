@@ -27,13 +27,17 @@ export function NodeWrapper<N, E>(
   const nodeId = nodeSignal.$.id
   const isSelected = computedOf(interactionState, nodeId)((s, id) => s.selectedNodeIds.has(id))
   const isHovered = computedOf(interactionState, nodeId)((s, id) => s.hoveredNodeId === id)
-  const isDragging = computedOf(interactionState, nodeId)(
-    (s, id) => s.mode === 'dragging-nodes' && (s.drag?.nodeIds.includes(id) ?? false),
-  )
+  const isDragging = computedOf(
+    interactionState,
+    nodeId,
+  )((s, id) => s.mode === 'dragging-nodes' && (s.drag?.nodeIds.includes(id) ?? false))
 
   const render = nodeRenderer ?? defaultNodeRenderer
 
-  const portStates = computedOf(nodeSignal, graph)((node, g) =>
+  const portStates = computedOf(
+    nodeSignal,
+    graph,
+  )((node, g) =>
     node.ports.map((portDef) => {
       const count = g.edges.filter(
         (e) =>
@@ -51,16 +55,16 @@ export function NodeWrapper<N, E>(
     diagnostics: signal([] as readonly Diagnostic[]),
     port: (portId: Value<string>) => {
       const pid = typeof portId === 'string' ? signal(portId) : portId
-      const portIsConnected = computedOf(portStates, pid)(
-        (ps, id) => ps.find((p) => p.definition.id === id)?.isConnected ?? false,
-      )
-      const portIsHovered = computedOf(interactionState, nodeId, pid)(
-        (s, nid, id): boolean =>
-          s.hoveredPort?.nodeId === nid && s.hoveredPort?.portId === id,
-      )
-      const portDef = computedOf(nodeSignal, pid)((n, id) =>
-        n.ports.find((p) => p.id === id),
-      )
+      const portIsConnected = computedOf(
+        portStates,
+        pid,
+      )((ps, id) => ps.find((p) => p.definition.id === id)?.isConnected ?? false)
+      const portIsHovered = computedOf(
+        interactionState,
+        nodeId,
+        pid,
+      )((s, nid, id): boolean => s.hoveredPort?.nodeId === nid && s.hoveredPort?.portId === id)
+      const portDef = computedOf(nodeSignal, pid)((n, id) => n.ports.find((p) => p.id === id))
       return Ensure(portDef, (def) =>
         Port(def, nodeId, portIsConnected, portIsHovered, onInteraction, setHoveredPort),
       )

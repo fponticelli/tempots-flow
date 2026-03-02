@@ -23,6 +23,7 @@ export function FlowViewport<N, E>(
   setContainerRect: (getter: () => DOMRect) => void,
   edgeRouting: EdgeRoutingStrategy,
   transitioning: Signal<boolean>,
+  allowManualPositioning: Signal<boolean>,
   nodeRenderer?: NodeRenderer<N>,
 ): Renderable {
   const interactionState = interactionManager.state
@@ -45,6 +46,7 @@ export function FlowViewport<N, E>(
 
   return html.div(
     attr.class('flow-viewport'),
+    attr.class(allowManualPositioning.map((v): string => (v ? 'flow--manual-positioning' : ''))),
     attr.tabindex(0),
 
     on.pointerdown((e: PointerEvent) => {
@@ -81,7 +83,7 @@ export function FlowViewport<N, E>(
 
     TransformLayer(
       viewport,
-      EdgeLayer(edgePaths, interactionState, handleInteraction, setHoveredEdge),
+      EdgeLayer(edgePaths, interactionState, handleInteraction, setHoveredEdge, transitioning),
       NodeLayer(
         graph,
         positions,

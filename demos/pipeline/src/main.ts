@@ -119,9 +119,6 @@ render(
     style.flexDirection('column'),
 
     html.div(
-      attr.class('flow-ui-layer'),
-      style.position('relative'),
-      style.pointerEvents('auto'),
       style.display('flex'),
       style.gap('8px'),
       style.padding('8px'),
@@ -130,7 +127,7 @@ render(
       ...Object.entries(layouts).map(([label, algo]) => LayoutButton(label, algo)),
     ),
 
-    html.div(style.flex('1'), style.position('relative'), flow.renderable),
+    html.div(style.flex('1'), style.position('relative'), style.padding('12px'), flow.renderable),
   ),
   '#app',
 )

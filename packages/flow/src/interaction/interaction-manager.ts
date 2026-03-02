@@ -44,6 +44,7 @@ export function createInteractionManager<N, E>(
   setNodePosition: (nodeId: string, position: Position) => void,
   positions: Signal<ReadonlyMap<string, Position>>,
   dimensions: Signal<ReadonlyMap<string, Dimensions>>,
+  allowManualPositioning: Signal<boolean>,
 ): InteractionManager {
   const state = prop(createInitialInteractionState())
 
@@ -81,7 +82,7 @@ export function createInteractionManager<N, E>(
         if (config.nodesSelectable !== false) {
           handleNodeClick(state, target.nodeId, isMultiSelect(event))
         }
-        if (config.nodesDraggable !== false) {
+        if (config.nodesDraggable !== false && allowManualPositioning.value) {
           const selected = state.value.selectedNodeIds
           const dragIds = selected.has(target.nodeId) ? [...selected] : [target.nodeId]
           handleDragStart(state, dragIds, graphPos(event), positions.value)

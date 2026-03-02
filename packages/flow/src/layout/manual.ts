@@ -5,6 +5,7 @@ const DEFAULT_SPACING = 20
 const DEFAULT_NODE_HEIGHT = 80
 
 export const manualLayout: LayoutAlgorithm = {
+  allowManualPositioning: true,
   layout(graph, dimensions, currentPositions) {
     const result = new Map<string, Position>()
     let stackY = 0

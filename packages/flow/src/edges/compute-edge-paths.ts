@@ -16,7 +16,11 @@ export function createEdgePathsSignal<N, E>(
   dimensions: Signal<ReadonlyMap<string, Dimensions>>,
   routing: EdgeRoutingStrategy,
 ): Signal<ComputedEdgePath[]> {
-  return computedOf(graph, positions, dimensions)((g, posMap, dimMap): ComputedEdgePath[] => {
+  return computedOf(
+    graph,
+    positions,
+    dimensions,
+  )((g, posMap, dimMap): ComputedEdgePath[] => {
     const portPositionCache = new Map<string, ReadonlyMap<string, ComputedPortPosition>>()
 
     function getPortPositions(nodeId: string) {

@@ -10,6 +10,7 @@ export interface LayoutEngine {
   readonly positions: Signal<ReadonlyMap<string, Position>>
   readonly dimensions: Signal<ReadonlyMap<string, Dimensions>>
   readonly transitioning: Signal<boolean>
+  readonly allowManualPositioning: Signal<boolean>
   setNodePosition(nodeId: string, position: Position): void
   updateDimensions(nodeId: string, dims: Dimensions): void
   setAlgorithm(algorithm: LayoutAlgorithm): void
@@ -28,6 +29,9 @@ export function createLayoutEngine<N, E>(
     mapsEqual,
   )
   const transitioningProp = prop(false)
+  const allowManualPositioning = algorithmProp.map(
+    (algo): boolean => algo.allowManualPositioning === true,
+  )
 
   let transitionTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -38,7 +42,10 @@ export function createLayoutEngine<N, E>(
     algorithmProp,
   )((g, dims, overrides, algo) => algo.layout(g, dims, overrides))
 
-  const layoutState = computedOf(positions, dimensionMap)((pos, dims) => ({
+  const layoutState = computedOf(
+    positions,
+    dimensionMap,
+  )((pos, dims) => ({
     positions: pos,
     dimensions: dims,
   }))
@@ -58,6 +65,7 @@ export function createLayoutEngine<N, E>(
     positions,
     dimensions: dimensionMap,
     transitioning: transitioningProp,
+    allowManualPositioning,
 
     setNodePosition(nodeId: string, position: Position) {
       positionOverrides.update((overrides) => {
@@ -80,6 +88,7 @@ export function createLayoutEngine<N, E>(
     },
 
     setAlgorithm(algo: LayoutAlgorithm) {
+      positionOverrides.set(positions.value)
       algorithmProp.set(algo)
       triggerTransition()
     },

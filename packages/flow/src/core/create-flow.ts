@@ -51,6 +51,7 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     layoutEngine.setNodePosition,
     layoutEngine.positions,
     layoutEngine.dimensions,
+    layoutEngine.allowManualPositioning,
   )
 
   // --- Derived selection signals ---
@@ -73,6 +74,7 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     setContainerRect,
     edgeRouting,
     layoutEngine.transitioning,
+    layoutEngine.allowManualPositioning,
     config.nodeRenderer,
   )
 

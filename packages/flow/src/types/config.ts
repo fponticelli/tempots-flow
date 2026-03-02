@@ -46,6 +46,7 @@ export interface EdgeRoutingParams {
 // --- Layout ---
 
 export interface LayoutAlgorithm {
+  readonly allowManualPositioning?: boolean
   layout(
     graph: Graph<unknown, unknown>,
     dimensions: ReadonlyMap<string, Dimensions>,

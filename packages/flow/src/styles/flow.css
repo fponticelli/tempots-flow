@@ -91,11 +91,16 @@
 /* Node wrapper */
 .flow-node-wrapper {
   position: absolute;
-  cursor: grab;
+  cursor: default;
   transition: box-shadow var(--flow-transition-duration) var(--flow-transition-easing);
 }
 
-.flow-node-wrapper:active {
+/* Grab cursor only when manual positioning is allowed */
+.flow--manual-positioning .flow-node-wrapper {
+  cursor: grab;
+}
+
+.flow--manual-positioning .flow-node-wrapper:active {
   cursor: grabbing;
 }
 
@@ -235,6 +240,13 @@
   fill: none;
   cursor: pointer;
   pointer-events: stroke;
+}
+
+/* Edge path transition during layout change */
+.flow-edge-layer--transitioning .flow-edge,
+.flow-edge-layer--transitioning .flow-edge-hitbox {
+  transition: d var(--flow-layout-transition-duration, 300ms)
+    var(--flow-layout-transition-easing, cubic-bezier(0.4, 0, 0.2, 1));
 }
 
 /* Connection preview layer */

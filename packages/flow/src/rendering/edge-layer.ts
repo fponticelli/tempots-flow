@@ -11,21 +11,22 @@ export function EdgeLayer(
   interactionState: Signal<InteractionState>,
   onInteraction: (event: PointerEvent, target: InteractionTarget) => void,
   setHoveredEdge: (edgeId: string | null) => void,
+  transitioning: Signal<boolean>,
 ): TNode {
   return svg.svg(
     attr.class('flow-edge-layer'),
+    attr.class(transitioning.map((t): string => (t ? 'flow-edge-layer--transitioning' : ''))),
 
     KeyedForEach(
       edgePaths,
       (ep) => ep.edgeId,
       (edgePathSignal) => {
         const edgeId = edgePathSignal.$.edgeId
-        const isSelected = computedOf(interactionState, edgeId)((s, id) =>
-          s.selectedEdgeIds.has(id),
-        )
-        const isHovered = computedOf(interactionState, edgeId)(
-          (s, id) => s.hoveredEdgeId === id,
-        )
+        const isSelected = computedOf(
+          interactionState,
+          edgeId,
+        )((s, id) => s.selectedEdgeIds.has(id))
+        const isHovered = computedOf(interactionState, edgeId)((s, id) => s.hoveredEdgeId === id)
 
         return svg.g(
           on.pointerdown((e: PointerEvent) => {
