@@ -228,6 +228,7 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
 
     setLayout(algorithm) {
       layoutEngine.setAlgorithm(algorithm)
+      requestAnimationFrame(() => fitView())
     },
 
     renderable,
