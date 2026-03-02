@@ -109,10 +109,14 @@ function LayoutButton(label: string, algorithm: LayoutAlgorithm) {
     label,
     style.padding('6px 12px'),
     style.cursor('pointer'),
-    style.border(isActive.map((a) => (a ? '2px solid #53a8ff' : '2px solid transparent'))),
+    style.border(
+      isActive.map((a) => (a ? '1px solid #53a8ff' : '1px solid rgba(255,255,255,0.15)')),
+    ),
     style.borderRadius('4px'),
-    style.background(isActive.map((a) => (a ? 'rgba(83, 168, 255, 0.2)' : 'transparent'))),
-    style.color(isActive.map((a) => (a ? '#ffffff' : '#cccccc'))),
+    style.background(
+      isActive.map((a) => (a ? 'rgba(83, 168, 255, 0.3)' : 'rgba(255,255,255,0.05)')),
+    ),
+    style.color(isActive.map((a) => (a ? '#ffffff' : 'rgba(255,255,255,0.6)'))),
     on.click(() => {
       activeLayout.set(label)
       flow.setLayout(algorithm)
@@ -131,7 +135,7 @@ render(
       style.display('flex'),
       style.gap('8px'),
       style.padding('8px'),
-      style.background('rgba(0,0,0,0.3)'),
+      style.background('rgba(0,0,0,0.6)'),
       style.zIndex('10'),
       ...Object.entries(layouts).map(([label, algo]) => LayoutButton(label, algo)),
     ),
