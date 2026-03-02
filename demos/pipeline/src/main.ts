@@ -1,5 +1,5 @@
 import { render, html, attr, on, style } from '@tempots/dom'
-import { prop } from '@tempots/core'
+import { prop, type Prop } from '@tempots/core'
 import { createFlow } from '@tempots/flow'
 import type { Graph, LayoutAlgorithm } from '@tempots/flow'
 import { hierarchicalLayout, gridLayout, manualLayout } from '@tempots/flow/layouts'
@@ -89,6 +89,8 @@ const layouts: Record<string, LayoutAlgorithm> = {
   Manual: manualLayout,
 }
 
+const activeLayout: Prop<string> = prop('Hierarchical LR')
+
 const flow = createFlow({
   graph: prop(graph),
   layout: hierarchicalLayout({ direction: 'LR', layerSpacing: 250, nodeSpacing: 60 }),
@@ -102,11 +104,17 @@ const flow = createFlow({
 })
 
 function LayoutButton(label: string, algorithm: LayoutAlgorithm) {
+  const isActive = activeLayout.map((a) => a === label)
   return html.button(
     label,
     style.padding('6px 12px'),
     style.cursor('pointer'),
+    style.border(isActive.map((a) => (a ? '2px solid #53a8ff' : '2px solid transparent'))),
+    style.borderRadius('4px'),
+    style.background(isActive.map((a) => (a ? 'rgba(83, 168, 255, 0.2)' : 'transparent'))),
+    style.color(isActive.map((a) => (a ? '#ffffff' : '#cccccc'))),
     on.click(() => {
+      activeLayout.set(label)
       flow.setLayout(algorithm)
     }),
   )
