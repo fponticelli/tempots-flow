@@ -12,6 +12,7 @@ export interface LayoutEngine {
   readonly transitioning: Signal<boolean>
   readonly allowManualPositioning: Signal<boolean>
   setNodePosition(nodeId: string, position: Position): void
+  setAllPositions(positions: ReadonlyMap<string, Position>): void
   updateDimensions(nodeId: string, dims: Dimensions): void
   setAlgorithm(algorithm: LayoutAlgorithm): void
 }
@@ -73,6 +74,10 @@ export function createLayoutEngine<N, E>(
         next.set(nodeId, position)
         return next
       })
+    },
+
+    setAllPositions(positions: ReadonlyMap<string, Position>) {
+      positionOverrides.set(positions)
     },
 
     updateDimensions(nodeId: string, dims: Dimensions) {

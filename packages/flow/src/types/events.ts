@@ -24,4 +24,7 @@ export interface FlowEvents<N, E> {
   readonly onViewportChange: (viewport: Viewport) => void
   readonly onConnect: (source: PortRef, target: PortRef) => void
   readonly onDisconnect: (edgeId: string) => void
+  readonly onDelete: (nodeIds: ReadonlySet<string>, edgeIds: ReadonlySet<string>) => void
+  readonly onCopy: (nodeIds: ReadonlySet<string>) => void
+  readonly onPaste: (pastedNodeIds: readonly string[]) => void
 }

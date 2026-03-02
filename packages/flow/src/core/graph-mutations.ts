@@ -48,3 +48,14 @@ export function removeEdges<N, E>(graph: Graph<N, E>, edgeIds: ReadonlySet<strin
 export function connectedEdges<N, E>(graph: Graph<N, E>, nodeId: string): readonly GraphEdge<E>[] {
   return graph.edges.filter((e) => e.source.nodeId === nodeId || e.target.nodeId === nodeId)
 }
+
+export function mergeGraphs<N, E>(
+  base: Graph<N, E>,
+  additions: { readonly nodes: readonly GraphNode<N>[]; readonly edges: readonly GraphEdge<E>[] },
+): Graph<N, E> {
+  return {
+    ...base,
+    nodes: [...base.nodes, ...additions.nodes],
+    edges: [...base.edges, ...additions.edges],
+  }
+}

@@ -5,7 +5,12 @@ import { createLayoutEngine } from '../layout/layout-engine'
 import { createEdgePathsSignal } from '../edges/compute-edge-paths'
 import { createBezierStrategy } from '../edges/bezier'
 import { createInteractionManager } from '../interaction/interaction-manager'
+import type { FlowEvents } from '../types/events'
 import { FlowViewport } from '../rendering/flow-viewport'
+import { createHistoryManager } from './history-manager'
+import { createClipboardManager } from './clipboard-manager'
+import { handleKeyDown } from '../interaction/keyboard-handler'
+import { removeNodes, removeEdges } from './graph-mutations'
 
 const DEFAULT_VIEWPORT: Viewport = { x: 0, y: 0, zoom: 1 }
 
@@ -42,11 +47,34 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     getContainerRect = getter
   }
 
-  // --- Interaction manager ---
+  // --- History manager ---
+  const historyManager = createHistoryManager(
+    graphProp,
+    () => layoutEngine.positions.value,
+    (positions) => layoutEngine.setAllPositions(positions),
+    { maxSize: config.maxUndoHistory ?? 100 },
+  )
+
+  // --- Clipboard manager ---
+  const clipboardManager = createClipboardManager<N, E>()
+
+  // --- Interaction manager (wrap drag end for history) ---
+  const originalDragEnd = config.events?.onNodeDragEnd
+  const wrappedEvents: Partial<FlowEvents<N, E>> = {
+    ...config.events,
+    onNodeDragEnd: (
+      nodeIds: readonly string[],
+      positions: ReadonlyMap<string, { x: number; y: number }>,
+    ) => {
+      historyManager.record()
+      originalDragEnd?.(nodeIds, positions)
+    },
+  }
+
   const interactionManager = createInteractionManager(
     viewportProp,
     () => getContainerRect(),
-    config,
+    { ...config, events: wrappedEvents },
     graphProp,
     layoutEngine.setNodePosition,
     layoutEngine.positions,
@@ -103,22 +131,22 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     const dimensions = layoutEngine.dimensions.value
     if (positions.size === 0) return
 
-    let minX = Infinity
-    let minY = Infinity
-    let maxX = -Infinity
-    let maxY = -Infinity
+    let mnX = Infinity
+    let mnY = Infinity
+    let mxX = -Infinity
+    let mxY = -Infinity
 
     for (const [nodeId, pos] of positions) {
       const dims = dimensions.get(nodeId) ?? { width: 180, height: 80 }
-      minX = Math.min(minX, pos.x)
-      minY = Math.min(minY, pos.y)
-      maxX = Math.max(maxX, pos.x + dims.width)
-      maxY = Math.max(maxY, pos.y + dims.height)
+      mnX = Math.min(mnX, pos.x)
+      mnY = Math.min(mnY, pos.y)
+      mxX = Math.max(mxX, pos.x + dims.width)
+      mxY = Math.max(mxY, pos.y + dims.height)
     }
 
     const rect = getContainerRect()
-    const contentWidth = maxX - minX
-    const contentHeight = maxY - minY
+    const contentWidth = mxX - mnX
+    const contentHeight = mxY - mnY
     const availWidth = rect.width - padding * 2
     const availHeight = rect.height - padding * 2
 
@@ -127,13 +155,108 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     const zoom = Math.min(availWidth / contentWidth, availHeight / contentHeight, maxZoom)
     const clampedZoom = Math.max(minZoom, zoom)
 
-    const centerX = (minX + maxX) / 2
-    const centerY = (minY + maxY) / 2
+    const centerX = (mnX + mxX) / 2
+    const centerY = (mnY + mxY) / 2
 
     viewportProp.set({
       x: rect.width / 2 - centerX * clampedZoom,
       y: rect.height / 2 - centerY * clampedZoom,
       zoom: clampedZoom,
+    })
+  }
+
+  // --- Selection helpers ---
+  function selectNodes(nodeIds: readonly string[]) {
+    interactionManager.state.update((s) => ({
+      ...s,
+      selectedNodeIds: new Set(nodeIds),
+    }))
+  }
+
+  function selectEdges(edgeIds: readonly string[]) {
+    interactionManager.state.update((s) => ({
+      ...s,
+      selectedEdgeIds: new Set(edgeIds),
+    }))
+  }
+
+  function clearSelection() {
+    interactionManager.state.update((s) => ({
+      ...s,
+      selectedNodeIds: new Set<string>(),
+      selectedEdgeIds: new Set<string>(),
+    }))
+  }
+
+  // --- Editing helpers ---
+  function updateGraph(updater: (g: typeof graphProp.value) => typeof graphProp.value) {
+    graphProp.update(updater)
+    historyManager.record()
+  }
+
+  function deleteSelection() {
+    const nodeIds = selectedNodeIds.value
+    const edgeIds = selectedEdgeIds.value
+    if (nodeIds.size === 0 && edgeIds.size === 0) return
+    graphProp.update((g) => {
+      let result = g
+      if (nodeIds.size > 0) result = removeNodes(result, nodeIds)
+      if (edgeIds.size > 0) result = removeEdges(result, edgeIds)
+      return result
+    })
+    clearSelection()
+    historyManager.record()
+    config.events?.onDelete?.(nodeIds, edgeIds)
+  }
+
+  function copySelection() {
+    const nodeIds = selectedNodeIds.value
+    clipboardManager.copy(graphProp.value, nodeIds, layoutEngine.positions.value)
+    config.events?.onCopy?.(nodeIds)
+  }
+
+  function pasteSelection() {
+    const result = clipboardManager.paste(graphProp.value, layoutEngine.positions.value)
+    if (!result) return
+    graphProp.set(result.graph)
+    for (const [nodeId, pos] of result.positionUpdates) {
+      layoutEngine.setNodePosition(nodeId, pos)
+    }
+    selectNodes(result.pastedNodeIds)
+    historyManager.record()
+    config.events?.onPaste?.(result.pastedNodeIds)
+  }
+
+  function cutSelection() {
+    copySelection()
+    deleteSelection()
+  }
+
+  function selectAll() {
+    selectNodes(graphProp.value.nodes.map((n) => n.id))
+  }
+
+  // --- Keyboard handler ---
+  const keyboardEnabled = config.keyboardEnabled !== false
+
+  function onKeyDown(event: KeyboardEvent) {
+    if (!keyboardEnabled) return
+    handleKeyDown(event, {
+      getGraph: () => graphProp.value,
+      updateGraph(updater) {
+        graphProp.update(updater)
+      },
+      getSelectedNodeIds: () => selectedNodeIds.value,
+      getSelectedEdgeIds: () => selectedEdgeIds.value,
+      selectNodes,
+      clearSelection,
+      getPositions: () => layoutEngine.positions.value,
+      setNodePosition: layoutEngine.setNodePosition,
+      history: historyManager,
+      clipboard: clipboardManager,
+      onDelete: config.events?.onDelete,
+      onCopy: config.events?.onCopy,
+      onPaste: config.events?.onPaste,
     })
   }
 
@@ -161,6 +284,7 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     zoomIn,
     zoomOut,
     fitView,
+    onKeyDown,
   })
 
   // --- Instance API ---
@@ -171,9 +295,7 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     selectedEdgeIds,
     edgePaths,
 
-    updateGraph(updater) {
-      graphProp.update(updater)
-    },
+    updateGraph,
 
     setViewport(partial) {
       viewportProp.update((v) => ({ ...v, ...partial }))
@@ -200,27 +322,9 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
       }
     },
 
-    selectNodes(nodeIds) {
-      interactionManager.state.update((s) => ({
-        ...s,
-        selectedNodeIds: new Set(nodeIds),
-      }))
-    },
-
-    selectEdges(edgeIds) {
-      interactionManager.state.update((s) => ({
-        ...s,
-        selectedEdgeIds: new Set(edgeIds),
-      }))
-    },
-
-    clearSelection() {
-      interactionManager.state.update((s) => ({
-        ...s,
-        selectedNodeIds: new Set<string>(),
-        selectedEdgeIds: new Set<string>(),
-      }))
-    },
+    selectNodes,
+    selectEdges,
+    clearSelection,
 
     setNodePosition(nodeId, position) {
       layoutEngine.setNodePosition(nodeId, position)
@@ -230,6 +334,16 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
       layoutEngine.setAlgorithm(algorithm)
       requestAnimationFrame(() => fitView())
     },
+
+    canUndo: historyManager.canUndo,
+    canRedo: historyManager.canRedo,
+    undo: () => historyManager.undo(),
+    redo: () => historyManager.redo(),
+    copySelection,
+    pasteSelection,
+    cutSelection,
+    deleteSelection,
+    selectAll,
 
     renderable,
 

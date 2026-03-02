@@ -41,6 +41,7 @@ export interface FlowViewportOptions<N, E> {
   readonly zoomIn: () => void
   readonly zoomOut: () => void
   readonly fitView: () => void
+  readonly onKeyDown?: (event: KeyboardEvent) => void
 }
 
 export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderable {
@@ -82,6 +83,7 @@ export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderab
     attr.tabindex(0),
 
     on.pointerdown((e: PointerEvent) => {
+      ;(e.currentTarget as HTMLElement).focus({ preventScroll: true })
       const target = e.target as HTMLElement
       if (
         target.classList.contains('flow-viewport') ||
@@ -94,6 +96,10 @@ export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderab
         }))
         interactionManager.handlePointerDown(e, { type: 'viewport' })
       }
+    }),
+
+    on.keydown((e: KeyboardEvent) => {
+      options.onKeyDown?.(e)
     }),
 
     on.pointermove((e: PointerEvent) => {

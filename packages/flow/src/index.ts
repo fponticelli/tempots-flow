@@ -13,6 +13,7 @@ export {
   removeEdge,
   removeEdges,
   connectedEdges,
+  mergeGraphs,
 } from './core/graph-mutations'
 
 // Coordinate utilities
@@ -64,6 +65,9 @@ export type {
 } from './types/config'
 
 export type { FlowEvents } from './types/events'
+
+export type { HistoryManager, FlowSnapshot } from './core/history-manager'
+export type { ClipboardManager, ClipboardContents } from './core/clipboard-manager'
 
 export type { DiagnosticSeverity, DiagnosticTarget, Diagnostic } from './types/validation'
 

@@ -128,6 +128,10 @@ export interface FlowConfig<N, E> {
   // Layout transitions
   readonly layoutTransitionDuration?: number
 
+  // Keyboard & history
+  readonly keyboardEnabled?: boolean
+  readonly maxUndoHistory?: number
+
   // UI components
   readonly background?: BackgroundConfig | false
   readonly controls?: ControlsConfig | false
@@ -161,6 +165,19 @@ export interface FlowInstance<N, E> {
 
   // Layout
   setLayout(algorithm: LayoutAlgorithm): void
+
+  // History
+  readonly canUndo: Signal<boolean>
+  readonly canRedo: Signal<boolean>
+  undo(): void
+  redo(): void
+
+  // Clipboard & editing
+  copySelection(): void
+  pasteSelection(): void
+  cutSelection(): void
+  deleteSelection(): void
+  selectAll(): void
 
   // The renderable to mount
   readonly renderable: Renderable
