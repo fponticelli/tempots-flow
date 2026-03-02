@@ -20,28 +20,42 @@ describe('createAnimatedPositions', () => {
   it('returns source signal directly when disabled', () => {
     const source = prop<ReadonlyMap<string, Position>>(new Map())
     const reducedMotion = prop(false)
-    const result = createAnimatedPositions(source, makeConfig({ enabled: false }), reducedMotion)
+    const dragging = prop(false)
+    const result = createAnimatedPositions(
+      source,
+      makeConfig({ enabled: false }),
+      reducedMotion,
+      dragging,
+    )
     expect(result).toBe(source)
   })
 
   it('returns source signal directly when duration is 0', () => {
     const source = prop<ReadonlyMap<string, Position>>(new Map())
     const reducedMotion = prop(false)
-    const result = createAnimatedPositions(source, makeConfig({ duration: 0 }), reducedMotion)
+    const dragging = prop(false)
+    const result = createAnimatedPositions(
+      source,
+      makeConfig({ duration: 0 }),
+      reducedMotion,
+      dragging,
+    )
     expect(result).toBe(source)
   })
 
   it('returns source signal directly when reduced motion is active', () => {
     const source = prop<ReadonlyMap<string, Position>>(new Map())
     const reducedMotion = prop(true)
-    const result = createAnimatedPositions(source, makeConfig(), reducedMotion)
+    const dragging = prop(false)
+    const result = createAnimatedPositions(source, makeConfig(), reducedMotion, dragging)
     expect(result).toBe(source)
   })
 
   it('returns a different signal when animation is active', () => {
     const source = prop<ReadonlyMap<string, Position>>(new Map([['a', { x: 0, y: 0 }]]))
     const reducedMotion = prop(false)
-    const result = createAnimatedPositions(source, makeConfig(), reducedMotion)
+    const dragging = prop(false)
+    const result = createAnimatedPositions(source, makeConfig(), reducedMotion, dragging)
     // animateSignal returns a new Prop, not the same reference
     expect(result).not.toBe(source)
   })
@@ -53,7 +67,8 @@ describe('createAnimatedPositions', () => {
     ])
     const source = prop<ReadonlyMap<string, Position>>(positions)
     const reducedMotion = prop(false)
-    const result = createAnimatedPositions(source, makeConfig(), reducedMotion)
+    const dragging = prop(false)
+    const result = createAnimatedPositions(source, makeConfig(), reducedMotion, dragging)
     // Initial value should be the same positions (animation starts from current)
     expect(result.value).toEqual(positions)
   })

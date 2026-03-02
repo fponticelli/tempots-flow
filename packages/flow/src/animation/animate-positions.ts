@@ -6,11 +6,13 @@ import type { LayoutTransitionConfig } from './animation-config'
 /**
  * Creates an animated version of a position map signal.
  * When the source positions change, nodes interpolate smoothly to their new locations.
+ * During drag (isDragging = true), positions update instantly.
  */
 export function createAnimatedPositions(
   sourcePositions: Signal<ReadonlyMap<string, Position>>,
   config: LayoutTransitionConfig,
   isReducedMotion: Signal<boolean>,
+  isDragging: Signal<boolean>,
 ): Signal<ReadonlyMap<string, Position>> {
   if (!config.enabled) return sourcePositions
 
@@ -20,8 +22,11 @@ export function createAnimatedPositions(
   return animateSignal(sourcePositions, {
     duration: effectiveDuration,
     easing: config.easing,
-    interpolate: (from, to, delta) =>
-      interpolatePositionMap(from, to, delta, config.stagger, config.staggerOrder),
+    interpolate: (from, to, delta) => {
+      // Skip interpolation during drag — positions must be instant
+      if (isDragging.value) return to
+      return interpolatePositionMap(from, to, delta, config.stagger, config.staggerOrder)
+    },
     equals: () => false, // Always treat new map as different
   })
 }

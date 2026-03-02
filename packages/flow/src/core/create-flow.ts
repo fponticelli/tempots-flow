@@ -38,10 +38,18 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
   // --- Layout engine ---
   const layoutEngine = createLayoutEngine(graphProp, config.layout, config.initialPositions)
 
-  // --- Animated positions ---
+  // --- Drag state (set later from interaction manager) ---
+  const isDragging = prop(false)
+
+  // --- Animated positions (bypassed during drag) ---
   const animatedPositions = effectivelyDisabled
     ? layoutEngine.positions
-    : createAnimatedPositions(layoutEngine.positions, animationConfig.layout, reducedMotion)
+    : createAnimatedPositions(
+        layoutEngine.positions,
+        animationConfig.layout,
+        reducedMotion,
+        isDragging,
+      )
 
   // --- Transitioning signal (driven by comparing animated vs raw positions) ---
   function updateTransitioning() {
@@ -112,9 +120,15 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     layoutEngine.allowManualPositioning,
   )
 
-  // --- Derived selection signals ---
+  // --- Derived signals ---
   const selectedNodeIds = interactionManager.state.map((s) => s.selectedNodeIds)
   const selectedEdgeIds = interactionManager.state.map((s) => s.selectedEdgeIds)
+
+  // Track drag state for animation bypass
+  interactionManager.state.map((s) => {
+    isDragging.set(s.mode === 'dragging-nodes')
+    return null
+  })
 
   // --- Dimension change handler ---
   function onDimensionsChange(nodeId: string, dims: Dimensions) {
