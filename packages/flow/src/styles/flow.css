@@ -209,11 +209,11 @@
   transition: stroke-width var(--flow-transition-duration) var(--flow-transition-easing);
 }
 
-.flow-edge--selected {
+.flow-edge--selected .flow-edge {
   stroke: var(--flow-edge-selected-color);
 }
 
-.flow-edge--hovered {
+.flow-edge--hovered .flow-edge {
   stroke-width: var(--flow-edge-hover-width);
 }
 

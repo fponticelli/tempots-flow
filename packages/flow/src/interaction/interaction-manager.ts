@@ -84,7 +84,7 @@ export function createInteractionManager<N, E>(
         if (config.nodesDraggable !== false) {
           const selected = state.value.selectedNodeIds
           const dragIds = selected.has(target.nodeId) ? [...selected] : [target.nodeId]
-          handleDragStart(state, dragIds, graphPos(event))
+          handleDragStart(state, dragIds, graphPos(event), positions.value)
         }
         config.events?.onNodeClick?.(
           graphSignal.value.nodes.find((n) => n.id === target.nodeId) as GraphNode<N>,

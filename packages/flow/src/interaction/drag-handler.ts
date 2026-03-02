@@ -8,14 +8,21 @@ export function handleDragStart(
   state: Prop<InteractionState>,
   nodeIds: readonly string[],
   mousePosition: Position,
+  currentPositions: ReadonlyMap<string, Position>,
 ): void {
+  const startPositions = new Map<string, Position>()
+  for (const id of nodeIds) {
+    const pos = currentPositions.get(id)
+    if (pos) startPositions.set(id, pos)
+  }
+
   state.update((s) => ({
     ...s,
     mode: 'dragging-nodes',
     selectedNodeIds: new Set(nodeIds),
     drag: {
       nodeIds,
-      startPositions: new Map(),
+      startPositions,
       startMousePosition: mousePosition,
     },
   }))
