@@ -99,6 +99,18 @@
   cursor: grabbing;
 }
 
+/* Layout transitions */
+.flow-node-wrapper--transitioning {
+  transition:
+    transform var(--flow-layout-transition-duration, 300ms)
+      var(--flow-layout-transition-easing, cubic-bezier(0.4, 0, 0.2, 1)),
+    box-shadow var(--flow-transition-duration) var(--flow-transition-easing);
+}
+
+.flow-node--dragging.flow-node-wrapper--transitioning {
+  transition: none;
+}
+
 /* Node */
 .flow-node {
   position: relative;

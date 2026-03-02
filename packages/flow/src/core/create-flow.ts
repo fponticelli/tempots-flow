@@ -24,7 +24,12 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
   })
 
   // --- Layout engine ---
-  const layoutEngine = createLayoutEngine(graphProp, config.layout, config.initialPositions)
+  const layoutEngine = createLayoutEngine(
+    graphProp,
+    config.layout,
+    config.initialPositions,
+    config.layoutTransitionDuration,
+  )
 
   // --- Edge routing ---
   const edgeRouting = config.edgeRouting ?? createBezierStrategy()
@@ -71,6 +76,7 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     onDimensionsChange,
     setContainerRect,
     edgeRouting,
+    layoutEngine.transitioning,
     config.nodeRenderer,
   )
 
@@ -176,6 +182,10 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
 
     setNodePosition(nodeId, position) {
       layoutEngine.setNodePosition(nodeId, position)
+    },
+
+    setLayout(algorithm) {
+      layoutEngine.setAlgorithm(algorithm)
     },
 
     renderable,

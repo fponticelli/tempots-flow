@@ -19,6 +19,7 @@ export function NodeWrapper<N, E>(
   interactionState: Prop<InteractionState>,
   onInteraction: (event: PointerEvent, target: InteractionTarget) => void,
   onDimensionsChange: (nodeId: string, dims: Dimensions) => void,
+  transitioning: Signal<boolean>,
   nodeRenderer?: NodeRenderer<N>,
 ): TNode {
   const nodeId = node.id
@@ -81,6 +82,7 @@ export function NodeWrapper<N, E>(
     attr.class(isSelected.map((s): string => (s ? 'flow-node--selected' : ''))),
     attr.class(isHovered.map((h): string => (h ? 'flow-node--hovered' : ''))),
     attr.class(isDragging.map((d): string => (d ? 'flow-node--dragging' : ''))),
+    attr.class(transitioning.map((t): string => (t ? 'flow-node-wrapper--transitioning' : ''))),
 
     style.transform(position.map((p) => `translate(${p.x}px, ${p.y}px)`)),
 

@@ -47,7 +47,7 @@ export interface EdgeRoutingParams {
 
 export interface LayoutAlgorithm {
   layout(
-    nodes: readonly GraphNode<unknown>[],
+    graph: Graph<unknown, unknown>,
     dimensions: ReadonlyMap<string, Dimensions>,
     currentPositions: ReadonlyMap<string, Position>,
   ): ReadonlyMap<string, Position>
@@ -97,6 +97,9 @@ export interface FlowConfig<N, E> {
   // Fit
   readonly fitViewOnInit?: boolean
   readonly fitViewPadding?: number
+
+  // Layout transitions
+  readonly layoutTransitionDuration?: number
 }
 
 // --- Flow instance ---
@@ -123,6 +126,9 @@ export interface FlowInstance<N, E> {
 
   // Position overrides
   setNodePosition(nodeId: string, position: Position): void
+
+  // Layout
+  setLayout(algorithm: LayoutAlgorithm): void
 
   // The renderable to mount
   readonly renderable: TNode

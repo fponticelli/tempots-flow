@@ -16,6 +16,7 @@ export function NodeLayer<N, E>(
   interactionState: Prop<InteractionState>,
   onInteraction: (event: PointerEvent, target: InteractionTarget) => void,
   onDimensionsChange: (nodeId: string, dims: Dimensions) => void,
+  transitioning: Signal<boolean>,
   nodeRenderer?: NodeRenderer<N>,
 ): TNode {
   return html.div(
@@ -35,6 +36,7 @@ export function NodeLayer<N, E>(
           interactionState,
           onInteraction,
           onDimensionsChange,
+          transitioning,
           nodeRenderer,
         )
       },

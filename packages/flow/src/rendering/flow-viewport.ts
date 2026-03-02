@@ -22,6 +22,7 @@ export function FlowViewport<N, E>(
   onDimensionsChange: (nodeId: string, dims: Dimensions) => void,
   setContainerRect: (getter: () => DOMRect) => void,
   edgeRouting: EdgeRoutingStrategy,
+  transitioning: Signal<boolean>,
   nodeRenderer?: NodeRenderer<N>,
 ): TNode {
   const { state: interactionState } = interactionManager
@@ -75,6 +76,7 @@ export function FlowViewport<N, E>(
         interactionState,
         handleInteraction,
         onDimensionsChange,
+        transitioning,
         nodeRenderer,
       ),
       ConnectionPreview(interactionState, edgeRouting),
