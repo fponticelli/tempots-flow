@@ -1,5 +1,5 @@
 import { render, html, svg, attr, svgAttr, style, on, computedOf, ForEach } from '@tempots/dom'
-import type { TNode, Renderable } from '@tempots/dom'
+import type { TNode } from '@tempots/dom'
 import type { Signal } from '@tempots/core'
 import { prop, type Prop } from '@tempots/core'
 import { createFlow, createEdgeOverlay } from '@tempots/flow'
@@ -10,6 +10,7 @@ import type {
   PortDefinition,
   LayoutAlgorithm,
   BackgroundType,
+  EdgeRoutingStrategy,
   NodeRenderer,
   NodeRenderContext,
   EdgeRenderer,
@@ -18,6 +19,12 @@ import type {
   PortRenderContext,
 } from '@tempots/flow'
 import { hierarchicalLayout, gridLayout, manualLayout } from '@tempots/flow/layouts'
+import {
+  createBezierStrategy,
+  createStraightStrategy,
+  createStepStrategy,
+  createSmoothStepStrategy,
+} from '@tempots/flow/edges'
 import '@tempots/flow/css'
 
 // --- Types ---
@@ -317,9 +324,9 @@ function numberConstantContent(node: Signal<GraphNode<VisualNodeData>>): TNode {
     attr.class('visual-node-content'),
     html.input(
       attr.type('range'),
-      attr.min('0'),
-      attr.max('1'),
-      attr.step('0.01'),
+      attr.min(0),
+      attr.max(1),
+      attr.step(0.01),
       attr.value(value.map(String)),
       on.pointerdown((e: PointerEvent) => e.stopPropagation()),
       on.input((e: Event) => {
@@ -765,7 +772,7 @@ const visualEdgeRenderer: EdgeRenderer<VisualEdgeData> = (
 ): TNode => {
   const d = context.path.map((ep) => ep.d)
   const color = edge.map((e) => dataTypeColors[e.data.dataType])
-  const typeLabel = edge.map((e) => e.data.dataType)
+  const typeLabel = edge.map((e): string => e.data.dataType)
   const quantity = computedOf(
     computedValues,
     edge,
@@ -862,6 +869,14 @@ const layouts: Record<string, LayoutAlgorithm> = {
 const activeLayout: Prop<string> = prop('Hierarchical LR')
 const showGrid: Prop<boolean> = prop(true)
 const activeGridType: Prop<BackgroundType> = prop<BackgroundType>('dots')
+const activeRouting: Prop<string> = prop('Bezier')
+
+const routingStrategies: Record<string, EdgeRoutingStrategy> = {
+  Bezier: createBezierStrategy(),
+  Straight: createStraightStrategy(),
+  Step: createStepStrategy(),
+  'Smooth Step': createSmoothStepStrategy(),
+}
 
 // --- Create flow instance ---
 
@@ -885,23 +900,19 @@ const flow = createFlow<VisualNodeData, VisualEdgeData>({
 
 // --- Toolbar UI ---
 
-function ToolbarButton(
-  label: string | Renderable,
-  isActive: Signal<boolean>,
-  onClick: () => void,
-): TNode {
+function ToolbarButton(label: TNode, isActive: Signal<boolean>, onClick: () => void): TNode {
   return html.button(
     label,
     style.padding('6px 12px'),
     style.cursor('pointer'),
     style.border(
-      isActive.map((a) => (a ? '1px solid #53a8ff' : '1px solid rgba(255,255,255,0.15)')),
+      isActive.map((a): string => (a ? '1px solid #53a8ff' : '1px solid rgba(255,255,255,0.15)')),
     ),
     style.borderRadius('4px'),
     style.background(
-      isActive.map((a) => (a ? 'rgba(83, 168, 255, 0.3)' : 'rgba(255,255,255,0.05)')),
+      isActive.map((a): string => (a ? 'rgba(83, 168, 255, 0.3)' : 'rgba(255,255,255,0.05)')),
     ),
-    style.color(isActive.map((a) => (a ? '#ffffff' : 'rgba(255,255,255,0.6)'))),
+    style.color(isActive.map((a): string => (a ? '#ffffff' : 'rgba(255,255,255,0.6)'))),
     on.click(onClick),
   )
 }
@@ -946,7 +957,7 @@ render(
       Separator(),
 
       ToolbarButton(
-        showGrid.map((v) => (v ? 'Hide Grid' : 'Show Grid')),
+        showGrid.map((v): string => (v ? 'Hide Grid' : 'Show Grid')),
         showGrid,
         () => {
           const next = !showGrid.value
@@ -962,6 +973,19 @@ render(
           () => {
             activeGridType.set(gridType)
             flow.setGridType(gridType)
+          },
+        ),
+      ),
+
+      Separator(),
+
+      ...Object.entries(routingStrategies).map(([label, strategy]) =>
+        ToolbarButton(
+          label,
+          activeRouting.map((a) => a === label),
+          () => {
+            activeRouting.set(label)
+            flow.setEdgeRouting(strategy)
           },
         ),
       ),

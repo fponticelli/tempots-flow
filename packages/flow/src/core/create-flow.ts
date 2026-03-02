@@ -91,12 +91,12 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
   }
 
   // --- Edge routing ---
-  const edgeRouting = config.edgeRouting ?? createBezierStrategy()
+  const edgeRoutingProp = prop(config.edgeRouting ?? createBezierStrategy())
   const edgePaths = createEdgePathsSignal(
     graphProp,
     layoutEngine.positions,
     layoutEngine.dimensions,
-    edgeRouting,
+    edgeRoutingProp,
   )
 
   // --- Viewport tween ---
@@ -343,7 +343,7 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     interactionManager,
     onDimensionsChange,
     setContainerRect,
-    edgeRouting,
+    edgeRouting: edgeRoutingProp,
     transitioning: layoutEngine.transitioning,
     allowManualPositioning: layoutEngine.allowManualPositioning,
     nodeRenderer: config.nodeRenderer,
@@ -414,6 +414,10 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
       layoutEngine.setAlgorithm(algorithm)
       triggerLayoutTransition()
       requestAnimationFrame(() => fitView())
+    },
+
+    setEdgeRouting(strategy) {
+      edgeRoutingProp.set(strategy)
     },
 
     canUndo: historyManager.canUndo,

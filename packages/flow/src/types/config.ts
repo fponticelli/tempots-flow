@@ -219,6 +219,9 @@ export interface FlowInstance<N, E> {
   // Layout
   setLayout(algorithm: LayoutAlgorithm): void
 
+  // Edge routing
+  setEdgeRouting(strategy: EdgeRoutingStrategy): void
+
   // History
   readonly canUndo: Signal<boolean>
   readonly canRedo: Signal<boolean>

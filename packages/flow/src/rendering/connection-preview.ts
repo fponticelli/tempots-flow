@@ -1,4 +1,4 @@
-import { svg, attr, svgAttr, When } from '@tempots/dom'
+import { svg, attr, svgAttr, When, computedOf } from '@tempots/dom'
 import type { TNode } from '@tempots/dom'
 import type { Signal } from '@tempots/core'
 import type { InteractionState } from '../types/interaction'
@@ -14,12 +14,15 @@ const OPPOSITE_SIDE: Record<PortSide, PortSide> = {
 
 export function ConnectionPreview(
   interactionState: Signal<InteractionState>,
-  routing: EdgeRoutingStrategy,
+  routing: Signal<EdgeRoutingStrategy>,
 ): TNode {
   const isConnecting = interactionState.map((s) => s.mode === 'connecting' && s.connection !== null)
 
   return When(isConnecting, () => {
-    const pathD = interactionState.map((s): string => {
+    const pathD = computedOf(
+      interactionState,
+      routing,
+    )((s, r): string => {
       const conn = s.connection
       if (!conn) return ''
 
@@ -35,7 +38,7 @@ export function ConnectionPreview(
         side: OPPOSITE_SIDE[conn.sourceSide],
       }
 
-      return routing.computePath({ source, target })
+      return r.computePath({ source, target })
     })
 
     const isValid = interactionState.map((s) => s.connection?.isValid ?? false)

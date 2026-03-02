@@ -1,8 +1,16 @@
-import { render, html, attr, on, style } from '@tempots/dom'
+import { render, html, on, style } from '@tempots/dom'
+import type { TNode } from '@tempots/dom'
+import type { Signal } from '@tempots/core'
 import { prop, type Prop } from '@tempots/core'
 import { createFlow } from '@tempots/flow'
-import type { Graph, LayoutAlgorithm, BackgroundType } from '@tempots/flow'
+import type { Graph, LayoutAlgorithm, BackgroundType, EdgeRoutingStrategy } from '@tempots/flow'
 import { hierarchicalLayout, gridLayout, manualLayout } from '@tempots/flow/layouts'
+import {
+  createBezierStrategy,
+  createStraightStrategy,
+  createStepStrategy,
+  createSmoothStepStrategy,
+} from '@tempots/flow/edges'
 import '@tempots/flow/css'
 
 const graph: Graph<string, string> = {
@@ -92,6 +100,31 @@ const layouts: Record<string, LayoutAlgorithm> = {
 const activeLayout: Prop<string> = prop('Hierarchical LR')
 const showGrid: Prop<boolean> = prop(true)
 const activeGridType: Prop<BackgroundType> = prop<BackgroundType>('lines')
+const activeRouting: Prop<string> = prop('Bezier')
+
+const routingStrategies: Record<string, EdgeRoutingStrategy> = {
+  Bezier: createBezierStrategy(),
+  Straight: createStraightStrategy(),
+  Step: createStepStrategy(),
+  'Smooth Step': createSmoothStepStrategy(),
+}
+
+function ToolbarButton(label: TNode, isActive: Signal<boolean>, onClick: () => void) {
+  return html.button(
+    label,
+    style.padding('6px 12px'),
+    style.cursor('pointer'),
+    style.border(
+      isActive.map((a): string => (a ? '1px solid #53a8ff' : '1px solid rgba(255,255,255,0.15)')),
+    ),
+    style.borderRadius('4px'),
+    style.background(
+      isActive.map((a): string => (a ? 'rgba(83, 168, 255, 0.3)' : 'rgba(255,255,255,0.05)')),
+    ),
+    style.color(isActive.map((a): string => (a ? '#ffffff' : 'rgba(255,255,255,0.6)'))),
+    on.click(onClick),
+  )
+}
 
 const flow = createFlow({
   graph: prop(graph),
@@ -108,27 +141,6 @@ const flow = createFlow({
   },
 })
 
-function LayoutButton(label: string, algorithm: LayoutAlgorithm) {
-  const isActive = activeLayout.map((a) => a === label)
-  return html.button(
-    label,
-    style.padding('6px 12px'),
-    style.cursor('pointer'),
-    style.border(
-      isActive.map((a) => (a ? '1px solid #53a8ff' : '1px solid rgba(255,255,255,0.15)')),
-    ),
-    style.borderRadius('4px'),
-    style.background(
-      isActive.map((a) => (a ? 'rgba(83, 168, 255, 0.3)' : 'rgba(255,255,255,0.05)')),
-    ),
-    style.color(isActive.map((a) => (a ? '#ffffff' : 'rgba(255,255,255,0.6)'))),
-    on.click(() => {
-      activeLayout.set(label)
-      flow.setLayout(algorithm)
-    }),
-  )
-}
-
 render(
   html.div(
     style.width('100%'),
@@ -142,7 +154,19 @@ render(
       style.padding('8px'),
       style.background('rgba(0,0,0,0.6)'),
       style.zIndex('10'),
-      ...Object.entries(layouts).map(([label, algo]) => LayoutButton(label, algo)),
+      style.flexWrap('wrap'),
+      style.alignItems('center'),
+
+      ...Object.entries(layouts).map(([label, algo]) =>
+        ToolbarButton(
+          label,
+          activeLayout.map((a) => a === label),
+          () => {
+            activeLayout.set(label)
+            flow.setLayout(algo)
+          },
+        ),
+      ),
 
       html.span(
         style.width('1px'),
@@ -150,48 +174,41 @@ render(
         style.alignSelf('stretch'),
       ),
 
-      html.button(
-        showGrid.map((v) => (v ? 'Hide Grid' : 'Show Grid')),
-        style.padding('6px 12px'),
-        style.cursor('pointer'),
-        style.border(
-          showGrid.map((v) => (v ? '1px solid #53a8ff' : '1px solid rgba(255,255,255,0.15)')),
-        ),
-        style.borderRadius('4px'),
-        style.background(
-          showGrid.map((v) => (v ? 'rgba(83, 168, 255, 0.3)' : 'rgba(255,255,255,0.05)')),
-        ),
-        style.color(showGrid.map((v) => (v ? '#ffffff' : 'rgba(255,255,255,0.6)'))),
-        on.click(() => {
+      ToolbarButton(
+        showGrid.map((v): string => (v ? 'Hide Grid' : 'Show Grid')),
+        showGrid,
+        () => {
           const next = !showGrid.value
           showGrid.set(next)
           flow.setGridVisible(next)
-        }),
+        },
       ),
 
       ...(['lines', 'dots', 'cross'] as const).map((gridType) =>
-        html.button(
+        ToolbarButton(
           gridType.charAt(0).toUpperCase() + gridType.slice(1),
-          style.padding('6px 12px'),
-          style.cursor('pointer'),
-          style.border(
-            activeGridType.map((t) =>
-              t === gridType ? '1px solid #53a8ff' : '1px solid rgba(255,255,255,0.15)',
-            ),
-          ),
-          style.borderRadius('4px'),
-          style.background(
-            activeGridType.map((t) =>
-              t === gridType ? 'rgba(83, 168, 255, 0.3)' : 'rgba(255,255,255,0.05)',
-            ),
-          ),
-          style.color(
-            activeGridType.map((t) => (t === gridType ? '#ffffff' : 'rgba(255,255,255,0.6)')),
-          ),
-          on.click(() => {
+          activeGridType.map((t) => t === gridType),
+          () => {
             activeGridType.set(gridType)
             flow.setGridType(gridType)
-          }),
+          },
+        ),
+      ),
+
+      html.span(
+        style.width('1px'),
+        style.background('rgba(255,255,255,0.15)'),
+        style.alignSelf('stretch'),
+      ),
+
+      ...Object.entries(routingStrategies).map(([label, strategy]) =>
+        ToolbarButton(
+          label,
+          activeRouting.map((a) => a === label),
+          () => {
+            activeRouting.set(label)
+            flow.setEdgeRouting(strategy)
+          },
         ),
       ),
     ),

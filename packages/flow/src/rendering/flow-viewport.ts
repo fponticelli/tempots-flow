@@ -33,7 +33,7 @@ export interface FlowViewportOptions<N, E> {
   readonly interactionManager: InteractionManager
   readonly onDimensionsChange: (nodeId: string, dims: Dimensions) => void
   readonly setContainerRect: (getter: () => DOMRect) => void
-  readonly edgeRouting: EdgeRoutingStrategy
+  readonly edgeRouting: Signal<EdgeRoutingStrategy>
   readonly transitioning: Signal<boolean>
   readonly allowManualPositioning: Signal<boolean>
   readonly nodeRenderer?: NodeRenderer<N>
