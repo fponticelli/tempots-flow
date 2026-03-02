@@ -27,6 +27,34 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     ...config.viewport,
   })
 
+  // --- Grid config (unifies snap + background) ---
+  const gridEnabled = config.grid !== false && config.grid !== undefined
+  const gridSize = gridEnabled ? ((config.grid as { size?: number }).size ?? 20) : undefined
+
+  // Grid overrides snap settings when present
+  const effectiveConfig = gridEnabled
+    ? {
+        ...config,
+        snapToGrid: config.snapToGrid ?? true,
+        snapGridSize: config.snapGridSize ?? gridSize,
+      }
+    : config
+
+  // Grid provides background when visible (unless background is explicitly configured)
+  const gridBackground = gridEnabled
+    ? (() => {
+        const g = config.grid as { visible?: boolean; type?: string; color?: string }
+        if (g.visible === false) return undefined
+        return {
+          type: (g.type as 'dots' | 'lines' | 'cross') ?? 'lines',
+          gap: gridSize,
+          color: g.color,
+        }
+      })()
+    : undefined
+
+  const effectiveBackground = config.background !== undefined ? config.background : gridBackground
+
   // --- Animation config ---
   const animationConfig = resolveAnimationConfig(config.animation, config.layoutTransitionDuration)
   const reducedMotion = createReducedMotionSignal()
@@ -95,7 +123,7 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
   const interactionManager = createInteractionManager(
     viewportProp,
     () => getContainerRect(),
-    { ...config, events: wrappedEvents },
+    { ...effectiveConfig, events: wrappedEvents },
     graphProp,
     layoutEngine.setNodePosition,
     layoutEngine.positions,
@@ -307,7 +335,7 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     transitioning: layoutEngine.transitioning,
     allowManualPositioning: layoutEngine.allowManualPositioning,
     nodeRenderer: config.nodeRenderer,
-    background: config.background,
+    background: effectiveBackground,
     controls: config.controls,
     minimap: config.minimap,
     setViewport(partial) {

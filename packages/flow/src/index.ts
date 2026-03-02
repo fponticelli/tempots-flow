@@ -59,6 +59,7 @@ export type {
   BackgroundConfig,
   ControlsConfig,
   MinimapConfig,
+  GridConfig,
   PortTypeConfig,
   FlowConfig,
   FlowInstance,

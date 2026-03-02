@@ -81,6 +81,19 @@ export interface MinimapConfig {
   readonly nodeColor?: string
 }
 
+// --- Grid ---
+
+export interface GridConfig {
+  /** Grid cell size in graph units. Defaults to 20. */
+  readonly size?: number
+  /** Whether to show the grid visually. Defaults to true. */
+  readonly visible?: boolean
+  /** Visual style when visible. Defaults to 'lines'. */
+  readonly type?: 'dots' | 'lines' | 'cross'
+  /** Grid line/dot color. Defaults to CSS variable --flow-grid-color. */
+  readonly color?: string
+}
+
 // --- Port type system ---
 
 export interface PortTypeConfig {
@@ -118,9 +131,12 @@ export interface FlowConfig<N, E> {
   readonly portTypes?: PortTypeConfig
   readonly connectionSnapRadius?: number
 
-  // Snap
+  // Snap (low-level, prefer `grid` for unified snap + visual)
   readonly snapToGrid?: boolean
   readonly snapGridSize?: number
+
+  // Grid (enables snap + optional visual grid)
+  readonly grid?: GridConfig | false
 
   // Fit
   readonly fitViewOnInit?: boolean
