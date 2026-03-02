@@ -11,6 +11,7 @@ import type {
   LayoutAlgorithm,
   BackgroundType,
   EdgeRoutingStrategy,
+  PortPlacement,
   NodeRenderer,
   NodeRenderContext,
   EdgeRenderer,
@@ -18,12 +19,19 @@ import type {
   PortRenderer,
   PortRenderContext,
 } from '@tempots/flow'
-import { hierarchicalLayout, gridLayout, manualLayout } from '@tempots/flow/layouts'
+import {
+  hierarchicalLayout,
+  gridLayout,
+  manualLayout,
+  forceDirectedLayout,
+  treeLayout,
+} from '@tempots/flow/layouts'
 import {
   createBezierStrategy,
   createStraightStrategy,
   createStepStrategy,
   createSmoothStepStrategy,
+  createBundledStrategy,
 } from '@tempots/flow/edges'
 import '@tempots/flow/css'
 
@@ -862,7 +870,10 @@ const visualPortRenderer: PortRenderer = (
 const layouts: Record<string, LayoutAlgorithm> = {
   'Hierarchical LR': hierarchicalLayout({ direction: 'LR', layerSpacing: 300, nodeSpacing: 60 }),
   'Hierarchical TB': hierarchicalLayout({ direction: 'TB', layerSpacing: 180, nodeSpacing: 100 }),
+  'Tree LR': treeLayout({ direction: 'LR', levelSpacing: 300, siblingSpacing: 80 }),
+  'Tree TB': treeLayout({ direction: 'TB', levelSpacing: 180, siblingSpacing: 80 }),
   Grid: gridLayout({ columns: 3, columnSpacing: 320, rowSpacing: 180 }),
+  Force: forceDirectedLayout(),
   Manual: manualLayout,
 }
 
@@ -870,12 +881,14 @@ const activeLayout: Prop<string> = prop('Hierarchical LR')
 const showGrid: Prop<boolean> = prop(true)
 const activeGridType: Prop<BackgroundType> = prop<BackgroundType>('dots')
 const activeRouting: Prop<string> = prop('Bezier')
+const activePortPlacement: Prop<PortPlacement> = prop<PortPlacement>('horizontal')
 
 const routingStrategies: Record<string, EdgeRoutingStrategy> = {
   Bezier: createBezierStrategy(),
   Straight: createStraightStrategy(),
   Step: createStepStrategy(),
   'Smooth Step': createSmoothStepStrategy({ borderRadius: 32 }),
+  Bundled: createBundledStrategy(),
 }
 
 // --- Create flow instance ---
@@ -949,6 +962,10 @@ render(
           activeLayout.map((a) => a === label),
           () => {
             activeLayout.set(label)
+            const placement =
+              label.includes('TB') || label.includes('BT') ? 'vertical' : 'horizontal'
+            activePortPlacement.set(placement as PortPlacement)
+            flow.setPortPlacement(placement as PortPlacement)
             flow.setLayout(algo)
           },
         ),
@@ -986,6 +1003,19 @@ render(
           () => {
             activeRouting.set(label)
             flow.setEdgeRouting(strategy)
+          },
+        ),
+      ),
+
+      Separator(),
+
+      ...(['horizontal', 'vertical'] as const).map((placement) =>
+        ToolbarButton(
+          placement === 'horizontal' ? 'Ports L/R' : 'Ports T/B',
+          activePortPlacement.map((p) => p === placement),
+          () => {
+            activePortPlacement.set(placement)
+            flow.setPortPlacement(placement)
           },
         ),
       ),

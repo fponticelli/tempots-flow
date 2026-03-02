@@ -1,6 +1,6 @@
 import type { Prop } from '@tempots/core'
 import type { InteractionState } from '../types/interaction'
-import type { Position, Dimensions, PortSide } from '../types/layout'
+import type { Position, Dimensions, PortSide, PortPlacement } from '../types/layout'
 import type { Graph, PortRef, PortDefinition } from '../types/graph'
 import type { FlowEvents } from '../types/events'
 import type { PortTypeConfig } from '../types/config'
@@ -34,6 +34,7 @@ export function handleConnectionMove<N, E>(
   dimensions: ReadonlyMap<string, Dimensions>,
   snapRadius: number,
   portTypeConfig?: PortTypeConfig,
+  portPlacement: PortPlacement = 'horizontal',
 ): void {
   const connection = state.value.connection
   if (!connection) return
@@ -53,7 +54,7 @@ export function handleConnectionMove<N, E>(
     const nodeDims = dimensions.get(node.id)
     if (!nodePos || !nodeDims) continue
 
-    const portPositions = computePortPositionsForNode(nodePos, nodeDims, node.ports)
+    const portPositions = computePortPositionsForNode(nodePos, nodeDims, node.ports, portPlacement)
 
     for (const port of node.ports) {
       if (!isPortCompatible(sourcePortDef, port, graph, node.id, portTypeConfig)) continue

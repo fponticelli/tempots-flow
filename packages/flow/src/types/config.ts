@@ -9,6 +9,7 @@ import type {
   Viewport,
   ComputedPortPosition,
   ComputedEdgePath,
+  PortPlacement,
 } from './layout'
 import type { Diagnostic } from './validation'
 import type { FlowEvents } from './events'
@@ -56,11 +57,20 @@ export interface EdgeOverlayConfig {
 
 export interface EdgeRoutingStrategy {
   computePath(params: EdgeRoutingParams): string
+  computeAllPaths?(params: EdgeBatchRoutingParams): ReadonlyMap<string, string>
 }
 
 export interface EdgeRoutingParams {
   readonly source: ComputedPortPosition
   readonly target: ComputedPortPosition
+}
+
+export interface EdgeBatchRoutingParams {
+  readonly edges: readonly {
+    readonly edgeId: string
+    readonly source: ComputedPortPosition
+    readonly target: ComputedPortPosition
+  }[]
 }
 
 // --- Port rendering ---
@@ -160,6 +170,9 @@ export interface FlowConfig<N, E> {
   readonly edgesSelectable?: boolean
   readonly multiSelectionKey?: 'shift' | 'meta' | 'ctrl'
 
+  // Port placement
+  readonly portPlacement?: PortPlacement
+
   // Connection
   readonly portTypes?: PortTypeConfig
   readonly connectionSnapRadius?: number
@@ -221,6 +234,10 @@ export interface FlowInstance<N, E> {
 
   // Edge routing
   setEdgeRouting(strategy: EdgeRoutingStrategy): void
+
+  // Port placement
+  readonly portPlacement: Signal<PortPlacement>
+  setPortPlacement(placement: PortPlacement): void
 
   // History
   readonly canUndo: Signal<boolean>

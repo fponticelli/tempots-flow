@@ -7,6 +7,7 @@ import type { InteractionState } from '../types/interaction'
 import type { NodeRenderer, PortRenderer } from '../types/config'
 import type { InteractionTarget } from '../interaction/interaction-manager'
 import { NodeWrapper } from './node-wrapper'
+import { getParentIds } from '../layout/compound-utils'
 
 const ZERO_POS: Position = { x: 0, y: 0 }
 
@@ -26,7 +27,10 @@ export function NodeLayer<N, E>(
     attr.class('flow-node-layer'),
 
     KeyedForEach(
-      graph.map((g) => g.nodes as GraphNode<N>[]),
+      graph.map((g) => {
+        const parentIds = getParentIds(g.nodes)
+        return g.nodes.filter((n) => !parentIds.has(n.id)) as GraphNode<N>[]
+      }),
       (node) => node.id,
       (nodeSignal) => {
         const nodePosition = computedOf(

@@ -149,6 +149,60 @@ export function acyclic<N, E>(): Validator<N, E> {
   }
 }
 
+export function validHierarchy<N, E>(): Validator<N, E> {
+  return (graph) => {
+    const diagnostics: Diagnostic[] = []
+    const nodeIds = new Set(graph.nodes.map((n) => n.id))
+
+    for (const node of graph.nodes) {
+      if (node.parentId === undefined) continue
+
+      // Self-reference check
+      if (node.parentId === node.id) {
+        diagnostics.push({
+          severity: 'error',
+          message: `Node "${node.id}" references itself as parent`,
+          target: { kind: 'node', nodeId: node.id },
+        })
+        continue
+      }
+
+      // Missing parent check
+      if (!nodeIds.has(node.parentId)) {
+        diagnostics.push({
+          severity: 'error',
+          message: `Node "${node.id}" references non-existent parent "${node.parentId}"`,
+          target: { kind: 'node', nodeId: node.id },
+        })
+        continue
+      }
+    }
+
+    // Cycle detection in parent chains
+    for (const node of graph.nodes) {
+      if (node.parentId === undefined) continue
+
+      const visited = new Set<string>()
+      let current: string | undefined = node.id
+
+      while (current !== undefined) {
+        if (visited.has(current)) {
+          diagnostics.push({
+            severity: 'error',
+            message: `Cycle detected in parent chain involving node "${node.id}"`,
+            target: { kind: 'node', nodeId: node.id },
+          })
+          break
+        }
+        visited.add(current)
+        current = graph.nodes.find((n) => n.id === current)?.parentId
+      }
+    }
+
+    return diagnostics
+  }
+}
+
 export function compose<N, E>(...validators: Validator<N, E>[]): Validator<N, E> {
   return (graph) => {
     const all: Diagnostic[] = []

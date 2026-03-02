@@ -2,7 +2,7 @@ import { prop } from '@tempots/core'
 import type { Prop, Signal } from '@tempots/core'
 import type { InteractionState } from '../types/interaction'
 import { createInitialInteractionState } from '../types/interaction'
-import type { Position, Viewport, Dimensions } from '../types/layout'
+import type { Position, Viewport, Dimensions, PortPlacement } from '../types/layout'
 import type { FlowConfig } from '../types/config'
 import type { Graph, GraphNode, GraphEdge } from '../types/graph'
 import { handlePanStart, handlePanMove, handlePanEnd } from './pan-handler'
@@ -21,6 +21,7 @@ import {
 import { handleNodeClick, handleEdgeClick } from './selection-handler'
 import { screenToGraph } from '../core/coordinate-utils'
 import { computePortPositionsForNode } from '../edges/port-positions'
+import { expandGroupDragIds } from '../layout/compound-utils'
 
 export type InteractionTarget =
   | { readonly type: 'viewport' }
@@ -45,6 +46,7 @@ export function createInteractionManager<N, E>(
   positions: Signal<ReadonlyMap<string, Position>>,
   dimensions: Signal<ReadonlyMap<string, Dimensions>>,
   allowManualPositioning: Signal<boolean>,
+  portPlacement: Signal<PortPlacement>,
 ): InteractionManager {
   const state = prop(createInitialInteractionState())
 
@@ -84,7 +86,8 @@ export function createInteractionManager<N, E>(
         }
         if (config.nodesDraggable !== false && allowManualPositioning.value) {
           const selected = state.value.selectedNodeIds
-          const dragIds = selected.has(target.nodeId) ? [...selected] : [target.nodeId]
+          let dragIds = selected.has(target.nodeId) ? [...selected] : [target.nodeId]
+          dragIds = expandGroupDragIds(dragIds, graphSignal.value.nodes)
           handleDragStart(state, dragIds, graphPos(event), positions.value)
         }
         config.events?.onNodeClick?.(
@@ -113,7 +116,12 @@ export function createInteractionManager<N, E>(
         const nodeDims = dimensions.value.get(target.nodeId)
         if (!nodePos || !nodeDims) return
 
-        const portPositions = computePortPositionsForNode(nodePos, nodeDims, node.ports)
+        const portPositions = computePortPositionsForNode(
+          nodePos,
+          nodeDims,
+          node.ports,
+          portPlacement.value,
+        )
         const portPos = portPositions.get(target.portId)
         if (!portPos) return
 
@@ -162,6 +170,7 @@ export function createInteractionManager<N, E>(
           dimensions.value,
           config.connectionSnapRadius ?? 20,
           config.portTypes,
+          portPlacement.value,
         )
         return
       }

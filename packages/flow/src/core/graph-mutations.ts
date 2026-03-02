@@ -59,3 +59,43 @@ export function mergeGraphs<N, E>(
     edges: [...base.edges, ...additions.edges],
   }
 }
+
+/**
+ * Group nodes under a new parent node.
+ * Adds groupNode to the graph and sets parentId on all nodeIds.
+ */
+export function groupNodes<N, E>(
+  graph: Graph<N, E>,
+  nodeIds: readonly string[],
+  groupNode: GraphNode<N>,
+): Graph<N, E> {
+  const idSet = new Set(nodeIds)
+  return {
+    ...graph,
+    nodes: [
+      ...graph.nodes.map((n) => (idSet.has(n.id) ? { ...n, parentId: groupNode.id } : n)),
+      groupNode,
+    ],
+    edges: graph.edges,
+  }
+}
+
+/**
+ * Ungroup: remove the group node and clear parentId on its direct children.
+ * Also removes edges connected to the group node.
+ */
+export function ungroupNodes<N, E>(graph: Graph<N, E>, groupNodeId: string): Graph<N, E> {
+  return {
+    ...graph,
+    nodes: graph.nodes
+      .filter((n) => n.id !== groupNodeId)
+      .map((n) => {
+        if (n.parentId !== groupNodeId) return n
+        const { parentId: _, ...rest } = n
+        return rest as GraphNode<N>
+      }),
+    edges: graph.edges.filter(
+      (e) => e.source.nodeId !== groupNodeId && e.target.nodeId !== groupNodeId,
+    ),
+  }
+}

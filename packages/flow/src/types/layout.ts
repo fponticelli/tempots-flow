@@ -18,6 +18,8 @@ export interface Viewport {
 
 export type PortSide = 'top' | 'right' | 'bottom' | 'left'
 
+export type PortPlacement = 'horizontal' | 'vertical'
+
 export interface ComputedPortPosition {
   readonly x: number
   readonly y: number

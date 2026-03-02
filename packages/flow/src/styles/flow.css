@@ -95,6 +95,57 @@
   pointer-events: auto;
 }
 
+/* Group layer */
+.flow-group-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* Group node */
+.flow-group-node {
+  position: absolute;
+  border: 1px dashed var(--flow-group-border, rgba(255, 255, 255, 0.2));
+  border-radius: var(--flow-node-border-radius);
+  background: var(--flow-group-bg, rgba(255, 255, 255, 0.03));
+  cursor: default;
+}
+
+.flow--manual-positioning .flow-group-node {
+  cursor: grab;
+}
+
+.flow--manual-positioning .flow-group-node:active {
+  cursor: grabbing;
+}
+
+.flow-group-node--selected {
+  border-color: var(--flow-selection-border);
+  background: var(--flow-selection-bg);
+}
+
+.flow-group-node--transitioning {
+  transition:
+    transform var(--flow-layout-transition-duration, 300ms)
+      var(--flow-layout-transition-easing, cubic-bezier(0.4, 0, 0.2, 1)),
+    width var(--flow-layout-transition-duration, 300ms)
+      var(--flow-layout-transition-easing, cubic-bezier(0.4, 0, 0.2, 1)),
+    height var(--flow-layout-transition-duration, 300ms)
+      var(--flow-layout-transition-easing, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+.flow-group-node-label {
+  padding: 4px 10px;
+  font-size: 0.75em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Node layer */
 .flow-node-layer {
   position: absolute;
@@ -437,6 +488,64 @@
   display: block;
 }
 
+/* ---- Vertical Port Placement ---- */
+
+.flow--port-placement-vertical .flow-node-body {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.flow--port-placement-vertical .flow-node-ports {
+  flex-direction: row;
+  justify-content: center;
+  gap: 12px;
+}
+
+.flow--port-placement-vertical .flow-node-ports--output {
+  margin-left: 0;
+}
+
+.flow--port-placement-vertical .flow-port {
+  flex-direction: column;
+  align-items: center;
+}
+
+.flow--port-placement-vertical .flow-port--output {
+  flex-direction: column-reverse;
+}
+
+.flow--port-placement-vertical .flow-port-dot {
+  position: absolute;
+  top: auto;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.flow--port-placement-vertical .flow-port--input .flow-port-dot {
+  left: 50%;
+  top: calc(-1 * var(--flow-node-padding) - var(--flow-port-size) / 2 - 3px);
+  right: auto;
+}
+
+.flow--port-placement-vertical .flow-port--output .flow-port-dot {
+  left: 50%;
+  bottom: calc(-1 * var(--flow-node-padding) - var(--flow-port-size) / 2 - 3px);
+  top: auto;
+  right: auto;
+}
+
+.flow--port-placement-vertical .flow-port:hover .flow-port-dot {
+  transform: translateX(-50%) scale(var(--flow-port-hover-scale));
+}
+
+.flow--port-placement-vertical .flow-port--hovered .flow-port-dot {
+  transform: translateX(-50%) scale(var(--flow-port-hover-scale));
+}
+
+.flow--port-placement-vertical .flow-port-label {
+  text-align: center;
+}
+
 /* ---- Enter Animations (keyframes) ---- */
 
 @keyframes flow-fade-in {
@@ -507,7 +616,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .flow-node-wrapper,
-  .flow-node-wrapper--transitioning {
+  .flow-node-wrapper--transitioning,
+  .flow-group-node--transitioning {
     transition: none !important;
   }
 

@@ -3,13 +3,26 @@ import type { TNode } from '@tempots/dom'
 import type { Signal } from '@tempots/core'
 import { prop, type Prop } from '@tempots/core'
 import { createFlow } from '@tempots/flow'
-import type { Graph, LayoutAlgorithm, BackgroundType, EdgeRoutingStrategy } from '@tempots/flow'
-import { hierarchicalLayout, gridLayout, manualLayout } from '@tempots/flow/layouts'
+import type {
+  Graph,
+  LayoutAlgorithm,
+  BackgroundType,
+  EdgeRoutingStrategy,
+  PortPlacement,
+} from '@tempots/flow'
+import {
+  hierarchicalLayout,
+  gridLayout,
+  manualLayout,
+  forceDirectedLayout,
+  treeLayout,
+} from '@tempots/flow/layouts'
 import {
   createBezierStrategy,
   createStraightStrategy,
   createStepStrategy,
   createSmoothStepStrategy,
+  createBundledStrategy,
 } from '@tempots/flow/edges'
 import '@tempots/flow/css'
 
@@ -93,7 +106,10 @@ const graph: Graph<string, string> = {
 const layouts: Record<string, LayoutAlgorithm> = {
   'Hierarchical LR': hierarchicalLayout({ direction: 'LR', layerSpacing: 250, nodeSpacing: 60 }),
   'Hierarchical TB': hierarchicalLayout({ direction: 'TB', layerSpacing: 150, nodeSpacing: 80 }),
+  'Tree LR': treeLayout({ direction: 'LR', levelSpacing: 250, siblingSpacing: 60 }),
+  'Tree TB': treeLayout({ direction: 'TB', levelSpacing: 150, siblingSpacing: 60 }),
   Grid: gridLayout({ columns: 3, columnSpacing: 250, rowSpacing: 150 }),
+  Force: forceDirectedLayout(),
   Manual: manualLayout,
 }
 
@@ -101,12 +117,14 @@ const activeLayout: Prop<string> = prop('Hierarchical LR')
 const showGrid: Prop<boolean> = prop(true)
 const activeGridType: Prop<BackgroundType> = prop<BackgroundType>('lines')
 const activeRouting: Prop<string> = prop('Bezier')
+const activePortPlacement: Prop<PortPlacement> = prop<PortPlacement>('horizontal')
 
 const routingStrategies: Record<string, EdgeRoutingStrategy> = {
   Bezier: createBezierStrategy(),
   Straight: createStraightStrategy(),
   Step: createStepStrategy(),
   'Smooth Step': createSmoothStepStrategy({ borderRadius: 32 }),
+  Bundled: createBundledStrategy(),
 }
 
 function ToolbarButton(label: TNode, isActive: Signal<boolean>, onClick: () => void) {
@@ -163,6 +181,10 @@ render(
           activeLayout.map((a) => a === label),
           () => {
             activeLayout.set(label)
+            const placement =
+              label.includes('TB') || label.includes('BT') ? 'vertical' : 'horizontal'
+            activePortPlacement.set(placement as PortPlacement)
+            flow.setPortPlacement(placement as PortPlacement)
             flow.setLayout(algo)
           },
         ),
@@ -208,6 +230,23 @@ render(
           () => {
             activeRouting.set(label)
             flow.setEdgeRouting(strategy)
+          },
+        ),
+      ),
+
+      html.span(
+        style.width('1px'),
+        style.background('rgba(255,255,255,0.15)'),
+        style.alignSelf('stretch'),
+      ),
+
+      ...(['horizontal', 'vertical'] as const).map((placement) =>
+        ToolbarButton(
+          placement === 'horizontal' ? 'Ports L/R' : 'Ports T/B',
+          activePortPlacement.map((p) => p === placement),
+          () => {
+            activePortPlacement.set(placement)
+            flow.setPortPlacement(placement)
           },
         ),
       ),

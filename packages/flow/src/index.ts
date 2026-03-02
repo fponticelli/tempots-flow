@@ -14,7 +14,18 @@ export {
   removeEdges,
   connectedEdges,
   mergeGraphs,
+  groupNodes,
+  ungroupNodes,
 } from './core/graph-mutations'
+
+// Compound node utilities
+export {
+  getChildIds,
+  getDescendantIds,
+  getParentIds,
+  getGroupBounds,
+  expandGroupDragIds,
+} from './layout/compound-utils'
 
 // Coordinate utilities
 export { screenToGraph, graphToScreen, clampZoom, snapToGrid } from './core/coordinate-utils'
@@ -35,6 +46,7 @@ export type {
   Dimensions,
   Viewport,
   PortSide,
+  PortPlacement,
   ComputedPortPosition,
   ComputedEdgePath,
   LayoutState,
@@ -59,6 +71,7 @@ export type {
   PortRenderContext,
   EdgeRoutingStrategy,
   EdgeRoutingParams,
+  EdgeBatchRoutingParams,
   LayoutAlgorithm,
   CornerPosition,
   BackgroundType,
@@ -100,4 +113,11 @@ export type { DiagnosticSeverity, DiagnosticTarget, Diagnostic } from './types/v
 
 // Validators
 export type { Validator } from './validators/index'
-export { portTypeCheck, portCardinality, requiredPorts, acyclic, compose } from './validators/index'
+export {
+  portTypeCheck,
+  portCardinality,
+  requiredPorts,
+  acyclic,
+  validHierarchy,
+  compose,
+} from './validators/index'

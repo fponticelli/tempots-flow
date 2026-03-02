@@ -1,5 +1,5 @@
 import { prop } from '@tempots/core'
-import type { Viewport, Dimensions } from '../types/layout'
+import type { Viewport, Dimensions, PortPlacement } from '../types/layout'
 import type { FlowConfig, FlowInstance, BackgroundType } from '../types/config'
 import { createLayoutEngine } from '../layout/layout-engine'
 import { createEdgePathsSignal } from '../edges/compute-edge-paths'
@@ -90,6 +90,9 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     }, layoutDuration)
   }
 
+  // --- Port placement ---
+  const portPlacementProp = prop<PortPlacement>(config.portPlacement ?? 'horizontal')
+
   // --- Edge routing ---
   const edgeRoutingProp = prop(config.edgeRouting ?? createBezierStrategy())
   const edgePaths = createEdgePathsSignal(
@@ -97,6 +100,7 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     layoutEngine.positions,
     layoutEngine.dimensions,
     edgeRoutingProp,
+    portPlacementProp,
   )
 
   // --- Viewport tween ---
@@ -141,6 +145,7 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     layoutEngine.positions,
     layoutEngine.dimensions,
     layoutEngine.allowManualPositioning,
+    portPlacementProp,
   )
 
   // --- Derived signals ---
@@ -365,6 +370,7 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     animationsEnabled: animationConfig.enabled && !effectivelyDisabled,
     gridVisible: gridVisibleProp,
     gridType: gridTypeProp,
+    portPlacement: portPlacementProp,
   })
 
   // --- Instance API ---
@@ -418,6 +424,11 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
 
     setEdgeRouting(strategy) {
       edgeRoutingProp.set(strategy)
+    },
+
+    portPlacement: portPlacementProp,
+    setPortPlacement(placement: PortPlacement) {
+      portPlacementProp.set(placement)
     },
 
     canUndo: historyManager.canUndo,

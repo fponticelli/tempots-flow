@@ -9,5 +9,9 @@ export type {
   HierarchicalDirection,
   HierarchicalAlignment,
 } from '../layout/hierarchical'
+export { forceDirectedLayout } from '../layout/force'
+export type { ForceDirectedLayoutOptions } from '../layout/force'
+export { treeLayout } from '../layout/tree'
+export type { TreeLayoutOptions, TreeDirection, MultiRootStrategy } from '../layout/tree'
 export type { LayoutEngine } from '../layout/layout-engine'
 export { createLayoutEngine } from '../layout/layout-engine'

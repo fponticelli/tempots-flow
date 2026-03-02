@@ -3,7 +3,13 @@ import type { Renderable } from '@tempots/dom'
 import type { Signal } from '@tempots/core'
 import type { Graph } from '../types/graph'
 import type { PortRef } from '../types/graph'
-import type { Viewport, ComputedEdgePath, Position, Dimensions } from '../types/layout'
+import type {
+  Viewport,
+  ComputedEdgePath,
+  Position,
+  Dimensions,
+  PortPlacement,
+} from '../types/layout'
 import type {
   NodeRenderer,
   EdgeRenderer,
@@ -18,6 +24,7 @@ import type { EnterAnimation } from '../animation/animation-config'
 import type { InteractionManager, InteractionTarget } from '../interaction/interaction-manager'
 import { TransformLayer } from './transform-layer'
 import { EdgeLayer } from './edge-layer'
+import { GroupLayer } from './group-layer'
 import { NodeLayer } from './node-layer'
 import { ConnectionPreview } from './connection-preview'
 import { SelectionBox } from './selection-box'
@@ -53,6 +60,7 @@ export interface FlowViewportOptions<N, E> {
   readonly animationsEnabled?: boolean
   readonly gridVisible?: Signal<boolean>
   readonly gridType?: Signal<BackgroundType>
+  readonly portPlacement?: Signal<PortPlacement>
 }
 
 export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderable {
@@ -97,6 +105,13 @@ export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderab
     attr.class('flow-viewport'),
     attr.class(allowManualPositioning.map((v): string => (v ? 'flow--manual-positioning' : ''))),
     attr.class(enterClass),
+    options.portPlacement
+      ? attr.class(
+          options.portPlacement.map((p): string =>
+            p === 'vertical' ? 'flow--port-placement-vertical' : '',
+          ),
+        )
+      : null,
     attr.tabindex(0),
 
     on.pointerdown((e: PointerEvent) => {
@@ -153,6 +168,7 @@ export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderab
         transitioning,
         options.edgeRenderer,
       ),
+      GroupLayer(graph, positions, dimensions, interactionState, handleInteraction, transitioning),
       NodeLayer(
         graph,
         positions,
