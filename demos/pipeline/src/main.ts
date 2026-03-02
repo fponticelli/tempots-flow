@@ -92,6 +92,7 @@ const layouts: Record<string, LayoutAlgorithm> = {
 const flow = createFlow({
   graph: prop(graph),
   layout: hierarchicalLayout({ direction: 'LR', layerSpacing: 250, nodeSpacing: 60 }),
+  viewport: { x: 30, y: 30, zoom: 1 },
   layoutTransitionDuration: 300,
   events: {
     onSelectionChange(nodeIds, edgeIds) {
@@ -127,7 +128,7 @@ render(
       ...Object.entries(layouts).map(([label, algo]) => LayoutButton(label, algo)),
     ),
 
-    html.div(style.flex('1'), style.position('relative'), style.padding('12px'), flow.renderable),
+    html.div(style.flex('1'), style.position('relative'), flow.renderable),
   ),
   '#app',
 )
