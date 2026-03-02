@@ -8,6 +8,7 @@ import type {
   NodeRenderer,
   EdgeRoutingStrategy,
   BackgroundConfig,
+  BackgroundType,
   ControlsConfig,
   MinimapConfig,
 } from '../types/config'
@@ -46,6 +47,8 @@ export interface FlowViewportOptions<N, E> {
   readonly onViewportInteraction?: () => void
   readonly enterAnimation?: EnterAnimation
   readonly animationsEnabled?: boolean
+  readonly gridVisible?: Signal<boolean>
+  readonly gridType?: Signal<BackgroundType>
 }
 
 export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderable {
@@ -131,7 +134,9 @@ export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderab
       setContainerRect(() => element.getBoundingClientRect())
     }),
 
-    options.background !== false ? Background(viewport, options.background ?? {}) : null,
+    options.background !== false
+      ? Background(viewport, options.background ?? {}, options.gridVisible, options.gridType)
+      : null,
 
     TransformLayer(
       viewport,

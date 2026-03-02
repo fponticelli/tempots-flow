@@ -59,8 +59,10 @@ export interface LayoutAlgorithm {
 
 export type CornerPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
 
+export type BackgroundType = 'dots' | 'lines' | 'cross'
+
 export interface BackgroundConfig {
-  readonly type?: 'dots' | 'lines' | 'cross'
+  readonly type?: BackgroundType
   readonly gap?: number
   readonly size?: number
   readonly color?: string
@@ -198,6 +200,12 @@ export interface FlowInstance<N, E> {
   cutSelection(): void
   deleteSelection(): void
   selectAll(): void
+
+  // Grid
+  readonly gridVisible: Signal<boolean>
+  setGridVisible(visible: boolean): void
+  readonly gridType: Signal<BackgroundType>
+  setGridType(type: BackgroundType): void
 
   // Animation state
   readonly isAnimating: Signal<boolean>

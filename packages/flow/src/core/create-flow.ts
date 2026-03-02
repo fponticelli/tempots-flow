@@ -1,6 +1,6 @@
 import { prop } from '@tempots/core'
 import type { Viewport, Dimensions } from '../types/layout'
-import type { FlowConfig, FlowInstance } from '../types/config'
+import type { FlowConfig, FlowInstance, BackgroundType } from '../types/config'
 import { createLayoutEngine } from '../layout/layout-engine'
 import { createEdgePathsSignal } from '../edges/compute-edge-paths'
 import { createBezierStrategy } from '../edges/bezier'
@@ -40,11 +40,10 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
       }
     : config
 
-  // Grid provides background when visible (unless background is explicitly configured)
+  // Grid provides background (unless background is explicitly configured)
   const gridBackground = gridEnabled
     ? (() => {
-        const g = config.grid as { visible?: boolean; type?: string; color?: string }
-        if (g.visible === false) return undefined
+        const g = config.grid as { type?: string; color?: string }
         return {
           type: (g.type as 'dots' | 'lines' | 'cross') ?? 'lines',
           gap: gridSize,
@@ -54,6 +53,19 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     : undefined
 
   const effectiveBackground = config.background !== undefined ? config.background : gridBackground
+
+  // Grid visibility signal (toggleable at runtime)
+  const gridVisibleProp = prop(
+    gridEnabled
+      ? (config.grid as { visible?: boolean }).visible !== false
+      : config.background !== false && config.background !== undefined,
+  )
+
+  // Grid type signal (switchable at runtime)
+  const initialGridType: BackgroundType = gridEnabled
+    ? ((config.grid as { type?: BackgroundType }).type ?? 'lines')
+    : ((effectiveBackground as { type?: BackgroundType } | undefined)?.type ?? 'dots')
+  const gridTypeProp = prop<BackgroundType>(initialGridType)
 
   // --- Animation config ---
   const animationConfig = resolveAnimationConfig(config.animation, config.layoutTransitionDuration)
@@ -349,6 +361,8 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     onViewportInteraction,
     enterAnimation,
     animationsEnabled: animationConfig.enabled && !effectivelyDisabled,
+    gridVisible: gridVisibleProp,
+    gridType: gridTypeProp,
   })
 
   // --- Instance API ---
@@ -409,6 +423,15 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     cutSelection,
     deleteSelection,
     selectAll,
+
+    gridVisible: gridVisibleProp,
+    setGridVisible(visible: boolean) {
+      gridVisibleProp.set(visible)
+    },
+    gridType: gridTypeProp,
+    setGridType(type: BackgroundType) {
+      gridTypeProp.set(type)
+    },
 
     isAnimating,
 

@@ -1,7 +1,7 @@
 import { render, html, attr, on, style } from '@tempots/dom'
 import { prop, type Prop } from '@tempots/core'
 import { createFlow } from '@tempots/flow'
-import type { Graph, LayoutAlgorithm } from '@tempots/flow'
+import type { Graph, LayoutAlgorithm, BackgroundType } from '@tempots/flow'
 import { hierarchicalLayout, gridLayout, manualLayout } from '@tempots/flow/layouts'
 import '@tempots/flow/css'
 
@@ -90,13 +90,15 @@ const layouts: Record<string, LayoutAlgorithm> = {
 }
 
 const activeLayout: Prop<string> = prop('Hierarchical LR')
+const showGrid: Prop<boolean> = prop(true)
+const activeGridType: Prop<BackgroundType> = prop<BackgroundType>('lines')
 
 const flow = createFlow({
   graph: prop(graph),
   layout: hierarchicalLayout({ direction: 'LR', layerSpacing: 250, nodeSpacing: 60 }),
   viewport: { x: 30, y: 30, zoom: 1 },
   layoutTransitionDuration: 300,
-  background: { type: 'dots', gap: 20 },
+  grid: { size: 20, type: 'lines' },
   controls: { position: 'bottom-left' },
   minimap: { position: 'bottom-right', width: 200, height: 150 },
   events: {
@@ -141,6 +143,57 @@ render(
       style.background('rgba(0,0,0,0.6)'),
       style.zIndex('10'),
       ...Object.entries(layouts).map(([label, algo]) => LayoutButton(label, algo)),
+
+      html.span(
+        style.width('1px'),
+        style.background('rgba(255,255,255,0.15)'),
+        style.alignSelf('stretch'),
+      ),
+
+      html.button(
+        showGrid.map((v) => (v ? 'Hide Grid' : 'Show Grid')),
+        style.padding('6px 12px'),
+        style.cursor('pointer'),
+        style.border(
+          showGrid.map((v) => (v ? '1px solid #53a8ff' : '1px solid rgba(255,255,255,0.15)')),
+        ),
+        style.borderRadius('4px'),
+        style.background(
+          showGrid.map((v) => (v ? 'rgba(83, 168, 255, 0.3)' : 'rgba(255,255,255,0.05)')),
+        ),
+        style.color(showGrid.map((v) => (v ? '#ffffff' : 'rgba(255,255,255,0.6)'))),
+        on.click(() => {
+          const next = !showGrid.value
+          showGrid.set(next)
+          flow.setGridVisible(next)
+        }),
+      ),
+
+      ...(['lines', 'dots', 'cross'] as const).map((gridType) =>
+        html.button(
+          gridType.charAt(0).toUpperCase() + gridType.slice(1),
+          style.padding('6px 12px'),
+          style.cursor('pointer'),
+          style.border(
+            activeGridType.map((t) =>
+              t === gridType ? '1px solid #53a8ff' : '1px solid rgba(255,255,255,0.15)',
+            ),
+          ),
+          style.borderRadius('4px'),
+          style.background(
+            activeGridType.map((t) =>
+              t === gridType ? 'rgba(83, 168, 255, 0.3)' : 'rgba(255,255,255,0.05)',
+            ),
+          ),
+          style.color(
+            activeGridType.map((t) => (t === gridType ? '#ffffff' : 'rgba(255,255,255,0.6)')),
+          ),
+          on.click(() => {
+            activeGridType.set(gridType)
+            flow.setGridType(gridType)
+          }),
+        ),
+      ),
     ),
 
     html.div(style.flex('1'), style.position('relative'), flow.renderable),

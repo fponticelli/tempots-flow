@@ -56,6 +56,7 @@ export type {
   EdgeRoutingParams,
   LayoutAlgorithm,
   CornerPosition,
+  BackgroundType,
   BackgroundConfig,
   ControlsConfig,
   MinimapConfig,
