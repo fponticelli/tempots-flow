@@ -1,4 +1,5 @@
 import { prop } from '@tempots/core'
+import type { Signal, Prop } from '@tempots/core'
 import type { Viewport, Dimensions } from '../types/layout'
 import type { FlowConfig, FlowInstance } from '../types/config'
 import { createLayoutEngine } from '../layout/layout-engine'
@@ -11,6 +12,10 @@ import { createHistoryManager } from './history-manager'
 import { createClipboardManager } from './clipboard-manager'
 import { handleKeyDown } from '../interaction/keyboard-handler'
 import { removeNodes, removeEdges } from './graph-mutations'
+import { resolveAnimationConfig } from '../animation/animation-config'
+import { createAnimatedPositions } from '../animation/animate-positions'
+import { createViewportTween } from '../animation/viewport-tween'
+import { createReducedMotionSignal } from '../animation/reduced-motion'
 
 const DEFAULT_VIEWPORT: Viewport = { x: 0, y: 0, zoom: 1 }
 
@@ -24,22 +29,47 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     ...config.viewport,
   })
 
+  // --- Animation config ---
+  const animationConfig = resolveAnimationConfig(config.animation, config.layoutTransitionDuration)
+  const reducedMotion = createReducedMotionSignal()
+  const effectivelyDisabled =
+    !animationConfig.enabled || (animationConfig.respectReducedMotion && reducedMotion.value)
+
   // --- Layout engine ---
-  const layoutEngine = createLayoutEngine(
-    graphProp,
-    config.layout,
-    config.initialPositions,
-    config.layoutTransitionDuration,
-  )
+  const layoutEngine = createLayoutEngine(graphProp, config.layout, config.initialPositions)
+
+  // --- Animated positions ---
+  const animatedPositions = effectivelyDisabled
+    ? layoutEngine.positions
+    : createAnimatedPositions(layoutEngine.positions, animationConfig.layout, reducedMotion)
+
+  // --- Transitioning signal (driven by comparing animated vs raw positions) ---
+  function updateTransitioning() {
+    const isTransitioning = animatedPositions.value !== layoutEngine.positions.value
+    if (layoutEngine.transitioning.value !== isTransitioning) {
+      layoutEngine.transitioning.set(isTransitioning)
+    }
+  }
+
+  // Check transitioning state when animated positions change
+  if (animatedPositions !== layoutEngine.positions) {
+    ;(animatedPositions as Signal<unknown>).map(() => {
+      updateTransitioning()
+      return null
+    })
+  }
 
   // --- Edge routing ---
   const edgeRouting = config.edgeRouting ?? createBezierStrategy()
   const edgePaths = createEdgePathsSignal(
     graphProp,
-    layoutEngine.positions,
+    animatedPositions,
     layoutEngine.dimensions,
     edgeRouting,
   )
+
+  // --- Viewport tween ---
+  const viewportTween = createViewportTween(viewportProp, animationConfig.viewport, reducedMotion)
 
   // --- Container rect ---
   let getContainerRect: () => DOMRect = () => new DOMRect(0, 0, 0, 0)
@@ -96,40 +126,34 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
   const minZoom = config.minZoom ?? 0.1
   const maxZoom = config.maxZoom ?? 4
 
+  function computeZoomViewport(current: Viewport, newZoom: number): Viewport {
+    const rect = getContainerRect()
+    const cx = rect.width / 2
+    const cy = rect.height / 2
+    const ratio = newZoom / current.zoom
+    return {
+      x: cx - (cx - current.x) * ratio,
+      y: cy - (cy - current.y) * ratio,
+      zoom: newZoom,
+    }
+  }
+
   function zoomIn() {
-    viewportProp.update((v) => {
-      const newZoom = Math.min(maxZoom, v.zoom + zoomStep)
-      const rect = getContainerRect()
-      const cx = rect.width / 2
-      const cy = rect.height / 2
-      const ratio = newZoom / v.zoom
-      return {
-        x: cx - (cx - v.x) * ratio,
-        y: cy - (cy - v.y) * ratio,
-        zoom: newZoom,
-      }
-    })
+    const current = viewportProp.value
+    const newZoom = Math.min(maxZoom, current.zoom + zoomStep)
+    viewportTween.tweenTo(computeZoomViewport(current, newZoom))
   }
 
   function zoomOut() {
-    viewportProp.update((v) => {
-      const newZoom = Math.max(minZoom, v.zoom - zoomStep)
-      const rect = getContainerRect()
-      const cx = rect.width / 2
-      const cy = rect.height / 2
-      const ratio = newZoom / v.zoom
-      return {
-        x: cx - (cx - v.x) * ratio,
-        y: cy - (cy - v.y) * ratio,
-        zoom: newZoom,
-      }
-    })
+    const current = viewportProp.value
+    const newZoom = Math.max(minZoom, current.zoom - zoomStep)
+    viewportTween.tweenTo(computeZoomViewport(current, newZoom))
   }
 
-  function fitView(padding = config.fitViewPadding ?? 50) {
+  function computeFitViewport(padding: number): Viewport | null {
     const positions = layoutEngine.positions.value
     const dimensions = layoutEngine.dimensions.value
-    if (positions.size === 0) return
+    if (positions.size === 0) return null
 
     let mnX = Infinity
     let mnY = Infinity
@@ -150,7 +174,7 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     const availWidth = rect.width - padding * 2
     const availHeight = rect.height - padding * 2
 
-    if (availWidth <= 0 || availHeight <= 0) return
+    if (availWidth <= 0 || availHeight <= 0) return null
 
     const zoom = Math.min(availWidth / contentWidth, availHeight / contentHeight, maxZoom)
     const clampedZoom = Math.max(minZoom, zoom)
@@ -158,11 +182,21 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     const centerX = (mnX + mxX) / 2
     const centerY = (mnY + mxY) / 2
 
-    viewportProp.set({
+    return {
       x: rect.width / 2 - centerX * clampedZoom,
       y: rect.height / 2 - centerY * clampedZoom,
       zoom: clampedZoom,
-    })
+    }
+  }
+
+  function fitView(padding = config.fitViewPadding ?? 50) {
+    const target = computeFitViewport(padding)
+    if (target) viewportTween.tweenTo(target)
+  }
+
+  // --- Cancel viewport tween on user interaction ---
+  function onViewportInteraction() {
+    viewportTween.cancel()
   }
 
   // --- Selection helpers ---
@@ -260,11 +294,25 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     })
   }
 
+  // --- Animation state ---
+  const isAnimatingProp: Prop<boolean> = prop(false)
+  if (animatedPositions !== layoutEngine.positions) {
+    ;(animatedPositions as Signal<unknown>).map(() => {
+      isAnimatingProp.set(animatedPositions.value !== layoutEngine.positions.value)
+      return null
+    })
+  }
+
+  // --- Enter animation config ---
+  const enterAnimation = animationConfig.enterExit.enabled
+    ? animationConfig.enterExit.enter
+    : ('none' as const)
+
   // --- Build renderable ---
   const renderable = FlowViewport({
     graph: graphProp,
     viewport: viewportProp,
-    positions: layoutEngine.positions,
+    positions: animatedPositions,
     dimensions: layoutEngine.dimensions,
     edgePaths,
     interactionManager,
@@ -285,6 +333,9 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     zoomOut,
     fitView,
     onKeyDown,
+    onViewportInteraction,
+    enterAnimation,
+    animationsEnabled: animationConfig.enabled && !effectivelyDisabled,
   })
 
   // --- Instance API ---
@@ -298,6 +349,7 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     updateGraph,
 
     setViewport(partial) {
+      viewportTween.cancel()
       viewportProp.update((v) => ({ ...v, ...partial }))
     },
 
@@ -309,16 +361,15 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
       const clamped = Math.min(max, Math.max(min, zoom))
 
       if (center) {
-        viewportProp.update((v) => {
-          const ratio = clamped / v.zoom
-          return {
-            x: center.x - (center.x - v.x) * ratio,
-            y: center.y - (center.y - v.y) * ratio,
-            zoom: clamped,
-          }
+        const current = viewportProp.value
+        const ratio = clamped / current.zoom
+        viewportTween.tweenTo({
+          x: center.x - (center.x - current.x) * ratio,
+          y: center.y - (center.y - current.y) * ratio,
+          zoom: clamped,
         })
       } else {
-        viewportProp.update((v) => ({ ...v, zoom: clamped }))
+        viewportTween.tweenTo({ ...viewportProp.value, zoom: clamped })
       }
     },
 
@@ -345,10 +396,12 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     deleteSelection,
     selectAll,
 
+    isAnimating: isAnimatingProp,
+
     renderable,
 
     dispose() {
-      // Signals auto-dispose with scope in @tempots/dom
+      viewportTween.cancel()
     },
   }
 }

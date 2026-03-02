@@ -69,6 +69,21 @@ export type { FlowEvents } from './types/events'
 export type { HistoryManager, FlowSnapshot } from './core/history-manager'
 export type { ClipboardManager, ClipboardContents } from './core/clipboard-manager'
 
+// Animation
+export type { EasingFunction } from './animation/easing'
+export { easing } from './animation/easing'
+export type {
+  LayoutTransitionConfig,
+  ViewportTransitionConfig,
+  EnterExitConfig,
+  EnterAnimation,
+  ExitAnimation,
+  EdgeFlowConfig,
+  AnimationConfig,
+  PartialAnimationConfig,
+} from './animation/animation-config'
+export { resolveAnimationConfig } from './animation/animation-config'
+
 export type { DiagnosticSeverity, DiagnosticTarget, Diagnostic } from './types/validation'
 
 // Validators

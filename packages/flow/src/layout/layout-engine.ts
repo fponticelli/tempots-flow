@@ -9,7 +9,7 @@ export interface LayoutEngine {
   readonly layoutState: Signal<LayoutState>
   readonly positions: Signal<ReadonlyMap<string, Position>>
   readonly dimensions: Signal<ReadonlyMap<string, Dimensions>>
-  readonly transitioning: Signal<boolean>
+  readonly transitioning: Prop<boolean>
   readonly allowManualPositioning: Signal<boolean>
   setNodePosition(nodeId: string, position: Position): void
   setAllPositions(positions: ReadonlyMap<string, Position>): void
@@ -21,7 +21,6 @@ export function createLayoutEngine<N, E>(
   graph: Signal<Graph<N, E>>,
   algorithm: LayoutAlgorithm = manualLayout,
   initialPositions: ReadonlyMap<string, Position> = new Map(),
-  transitionDuration = 300,
 ): LayoutEngine {
   const algorithmProp: Prop<LayoutAlgorithm> = prop(algorithm)
   const positionOverrides: Prop<ReadonlyMap<string, Position>> = prop(initialPositions, mapsEqual)
@@ -33,8 +32,6 @@ export function createLayoutEngine<N, E>(
   const allowManualPositioning = algorithmProp.map(
     (algo): boolean => algo.allowManualPositioning === true,
   )
-
-  let transitionTimer: ReturnType<typeof setTimeout> | null = null
 
   const positions = computedOf(
     graph,
@@ -50,16 +47,6 @@ export function createLayoutEngine<N, E>(
     positions: pos,
     dimensions: dims,
   }))
-
-  function triggerTransition() {
-    if (transitionDuration <= 0) return
-    if (transitionTimer) clearTimeout(transitionTimer)
-    transitioningProp.set(true)
-    transitionTimer = setTimeout(() => {
-      transitioningProp.set(false)
-      transitionTimer = null
-    }, transitionDuration)
-  }
 
   return {
     layoutState,
@@ -95,7 +82,6 @@ export function createLayoutEngine<N, E>(
     setAlgorithm(algo: LayoutAlgorithm) {
       positionOverrides.set(positions.value)
       algorithmProp.set(algo)
-      triggerTransition()
     },
   }
 }

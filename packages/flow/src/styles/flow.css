@@ -43,6 +43,10 @@
   /* Motion */
   --flow-transition-duration: 200ms;
   --flow-transition-easing: cubic-bezier(0.4, 0, 0.2, 1);
+  --flow-layout-transition-duration: 300ms;
+  --flow-layout-transition-easing: cubic-bezier(0.4, 0, 0.2, 1);
+  --flow-enter-duration: 200ms;
+  --flow-edge-flow-speed: 1s;
 }
 
 /* Viewport */
@@ -409,4 +413,89 @@
 
 .flow-minimap canvas {
   display: block;
+}
+
+/* ---- Enter Animations (keyframes) ---- */
+
+@keyframes flow-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes flow-scale-in {
+  from {
+    transform: scale(0.8);
+  }
+}
+
+@keyframes flow-fade-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+
+@keyframes flow-slide-down-in {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+
+/* Enter animation classes applied on viewport, targeting inner .flow-node */
+.flow--enter-fade .flow-node {
+  animation: flow-fade-in var(--flow-enter-duration) var(--flow-transition-easing) both;
+}
+
+.flow--enter-scale .flow-node {
+  animation: flow-scale-in var(--flow-enter-duration) var(--flow-transition-easing) both;
+}
+
+.flow--enter-fade-scale .flow-node {
+  animation: flow-fade-scale-in var(--flow-enter-duration) var(--flow-transition-easing) both;
+}
+
+.flow--enter-slide-down .flow-node {
+  animation: flow-slide-down-in var(--flow-enter-duration) var(--flow-transition-easing) both;
+}
+
+/* Edge enter animation */
+.flow--enter-fade .flow-edge,
+.flow--enter-scale .flow-edge,
+.flow--enter-fade-scale .flow-edge,
+.flow--enter-slide-down .flow-edge {
+  animation: flow-fade-in var(--flow-enter-duration) var(--flow-transition-easing) both;
+}
+
+/* ---- Edge Flow Animation ---- */
+
+@keyframes flow-edge-dash {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+.flow-edge--flowing .flow-edge {
+  stroke-dasharray: 8 4;
+  animation: flow-edge-dash var(--flow-edge-flow-speed) linear infinite;
+}
+
+/* ---- Reduced Motion ---- */
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-node-wrapper,
+  .flow-node-wrapper--transitioning {
+    transition: none !important;
+  }
+
+  .flow-edge-layer--transitioning .flow-edge,
+  .flow-edge-layer--transitioning .flow-edge-hitbox {
+    transition: none !important;
+  }
+
+  .flow-node,
+  .flow-edge {
+    animation: none !important;
+  }
 }

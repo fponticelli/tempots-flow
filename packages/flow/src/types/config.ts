@@ -12,6 +12,7 @@ import type {
 } from './layout'
 import type { Diagnostic } from './validation'
 import type { FlowEvents } from './events'
+import type { PartialAnimationConfig } from '../animation/animation-config'
 
 // --- Node rendering ---
 
@@ -125,8 +126,11 @@ export interface FlowConfig<N, E> {
   readonly fitViewOnInit?: boolean
   readonly fitViewPadding?: number
 
-  // Layout transitions
+  // Layout transitions (legacy, prefer animation.layout.duration)
   readonly layoutTransitionDuration?: number
+
+  // Animation
+  readonly animation?: PartialAnimationConfig
 
   // Keyboard & history
   readonly keyboardEnabled?: boolean
@@ -178,6 +182,9 @@ export interface FlowInstance<N, E> {
   cutSelection(): void
   deleteSelection(): void
   selectAll(): void
+
+  // Animation state
+  readonly isAnimating: Signal<boolean>
 
   // The renderable to mount
   readonly renderable: Renderable

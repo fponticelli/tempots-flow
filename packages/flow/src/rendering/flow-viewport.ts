@@ -11,6 +11,7 @@ import type {
   ControlsConfig,
   MinimapConfig,
 } from '../types/config'
+import type { EnterAnimation } from '../animation/animation-config'
 import type { InteractionManager, InteractionTarget } from '../interaction/interaction-manager'
 import { TransformLayer } from './transform-layer'
 import { EdgeLayer } from './edge-layer'
@@ -42,6 +43,9 @@ export interface FlowViewportOptions<N, E> {
   readonly zoomOut: () => void
   readonly fitView: () => void
   readonly onKeyDown?: (event: KeyboardEvent) => void
+  readonly onViewportInteraction?: () => void
+  readonly enterAnimation?: EnterAnimation
+  readonly animationsEnabled?: boolean
 }
 
 export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderable {
@@ -77,13 +81,20 @@ export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderab
     interactionManager.state.update((s) => ({ ...s, hoveredPort: portRef }))
   }
 
+  const enterClass =
+    options.animationsEnabled && options.enterAnimation && options.enterAnimation !== 'none'
+      ? `flow--enter-${options.enterAnimation}`
+      : ''
+
   return html.div(
     attr.class('flow-viewport'),
     attr.class(allowManualPositioning.map((v): string => (v ? 'flow--manual-positioning' : ''))),
+    attr.class(enterClass),
     attr.tabindex(0),
 
     on.pointerdown((e: PointerEvent) => {
       ;(e.currentTarget as HTMLElement).focus({ preventScroll: true })
+      options.onViewportInteraction?.()
       const target = e.target as HTMLElement
       if (
         target.classList.contains('flow-viewport') ||
@@ -111,6 +122,7 @@ export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderab
     }),
 
     on.wheel((e: WheelEvent) => {
+      options.onViewportInteraction?.()
       interactionManager.handleWheel(e)
     }),
 
