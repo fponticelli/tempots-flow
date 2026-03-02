@@ -3,6 +3,8 @@ import { createFlow } from '@tempots/flow'
 import type { Graph } from '@tempots/flow'
 import '@tempots/flow/css'
 
+let edgeCounter = 2
+
 const graph: Graph<string, string> = {
   nodes: [
     {
@@ -22,6 +24,14 @@ const graph: Graph<string, string> = {
       id: 'node-3',
       data: 'Output',
       ports: [{ id: 'in', direction: 'input', label: 'Input' }],
+    },
+    {
+      id: 'node-4',
+      data: 'Disconnected',
+      ports: [
+        { id: 'in', direction: 'input', type: 'Float', label: 'Input' },
+        { id: 'out', direction: 'output', type: 'Float', label: 'Output' },
+      ],
     },
   ],
   edges: [
@@ -48,8 +58,26 @@ const flow = createFlow({
     ['node-1', { x: 50, y: 50 }],
     ['node-2', { x: 300, y: 150 }],
     ['node-3', { x: 550, y: 50 }],
+    ['node-4', { x: 300, y: 320 }],
   ]),
   events: {
+    onConnect(source, target) {
+      edgeCounter++
+      console.log('Connect:', source, '->', target)
+      flow.updateGraph((g) => ({
+        ...g,
+        edges: [
+          ...g.edges,
+          {
+            id: `edge-${edgeCounter}`,
+            data: '',
+            source,
+            target,
+            direction: 'forward' as const,
+          },
+        ],
+      }))
+    },
     onSelectionChange(nodeIds, edgeIds) {
       console.log('Selection:', { nodes: [...nodeIds], edges: [...edgeIds] })
     },

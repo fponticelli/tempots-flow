@@ -116,6 +116,10 @@
   box-shadow: var(--flow-node-selected-shadow);
 }
 
+.flow-node--hovered .flow-node {
+  border-color: var(--flow-node-selected-border);
+}
+
 /* Node header */
 .flow-node-header {
   padding: var(--flow-node-padding);
@@ -125,6 +129,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  border-radius: var(--flow-node-border-radius) var(--flow-node-border-radius) 0 0;
 }
 
 /* Node body */

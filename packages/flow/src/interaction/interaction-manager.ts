@@ -13,6 +13,11 @@ import {
   handleConnectionMove,
   handleConnectionEnd,
 } from './connection-handler'
+import {
+  handleBoxSelectStart,
+  handleBoxSelectMove,
+  handleBoxSelectEnd,
+} from './box-selection-handler'
 import { handleNodeClick, handleEdgeClick } from './selection-handler'
 import { screenToGraph } from '../core/coordinate-utils'
 import { computePortPositionsForNode } from '../edges/port-positions'
@@ -64,7 +69,9 @@ export function createInteractionManager<N, E>(
 
     handlePointerDown(event: PointerEvent, target: InteractionTarget) {
       if (target.type === 'viewport') {
-        if (config.panEnabled !== false) {
+        if (event.shiftKey) {
+          handleBoxSelectStart(state, graphPos(event))
+        } else if (config.panEnabled !== false) {
           handlePanStart(state, event)
         }
         return
@@ -157,6 +164,11 @@ export function createInteractionManager<N, E>(
         )
         return
       }
+
+      if (mode === 'box-selecting') {
+        handleBoxSelectMove(state, graphPos(event))
+        return
+      }
     },
 
     handlePointerUp(_event: PointerEvent) {
@@ -174,6 +186,11 @@ export function createInteractionManager<N, E>(
 
       if (mode === 'connecting') {
         handleConnectionEnd(state, config.events)
+        return
+      }
+
+      if (mode === 'box-selecting') {
+        handleBoxSelectEnd(state, positions.value, dimensions.value)
         return
       }
     },

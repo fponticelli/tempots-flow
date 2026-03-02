@@ -10,6 +10,7 @@ import { TransformLayer } from './transform-layer'
 import { EdgeLayer } from './edge-layer'
 import { NodeLayer } from './node-layer'
 import { ConnectionPreview } from './connection-preview'
+import { SelectionBox } from './selection-box'
 import { OverlayLayer } from './overlay-layer'
 
 export function FlowViewport<N, E>(
@@ -77,6 +78,7 @@ export function FlowViewport<N, E>(
         nodeRenderer,
       ),
       ConnectionPreview(interactionState, edgeRouting),
+      SelectionBox(interactionState),
     ),
 
     OverlayLayer(),
