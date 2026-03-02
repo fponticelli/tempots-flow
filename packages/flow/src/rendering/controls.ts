@@ -70,7 +70,7 @@ export function Controls(
           attr.class('flow-controls-button'),
           attr.type('button'),
           attr.title('Zoom in'),
-          on.click(zoomIn),
+          on.click(() => zoomIn()),
           ZoomInIcon(),
         )
       : null,
@@ -79,7 +79,7 @@ export function Controls(
           attr.class('flow-controls-button'),
           attr.type('button'),
           attr.title('Zoom out'),
-          on.click(zoomOut),
+          on.click(() => zoomOut()),
           ZoomOutIcon(),
         )
       : null,
@@ -88,7 +88,7 @@ export function Controls(
           attr.class('flow-controls-button'),
           attr.type('button'),
           attr.title('Fit view'),
-          on.click(fitView),
+          on.click(() => fitView()),
           FitViewIcon(),
         )
       : null,
