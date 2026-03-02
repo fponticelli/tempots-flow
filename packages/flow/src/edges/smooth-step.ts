@@ -1,5 +1,5 @@
 import type { EdgeRoutingStrategy, EdgeRoutingParams } from '../types/config'
-import type { PortSide } from '../types/layout'
+import { computeStepWaypoints } from './step'
 
 export interface SmoothStepOptions {
   readonly offset?: number
@@ -8,20 +8,6 @@ export interface SmoothStepOptions {
 
 const DEFAULT_OFFSET = 20
 const DEFAULT_BORDER_RADIUS = 8
-
-function sideDirection(side: PortSide): { dx: number; dy: number } {
-  const map: Record<PortSide, { dx: number; dy: number }> = {
-    left: { dx: -1, dy: 0 },
-    right: { dx: 1, dy: 0 },
-    top: { dx: 0, dy: -1 },
-    bottom: { dx: 0, dy: 1 },
-  }
-  return map[side]
-}
-
-function isHorizontal(side: PortSide): boolean {
-  return side === 'left' || side === 'right'
-}
 
 function sign(v: number): number {
   return v > 0 ? 1 : v < 0 ? -1 : 0
@@ -36,26 +22,21 @@ function roundedCorner(
   toY: number,
   r: number,
 ): string {
-  // Determine the directions into and out of the corner
   const dxIn = sign(cornerX - fromX)
   const dyIn = sign(cornerY - fromY)
   const dxOut = sign(toX - cornerX)
   const dyOut = sign(toY - cornerY)
 
-  // Clamp radius to half the available distance on each leg
   const legIn = Math.max(Math.abs(cornerX - fromX), Math.abs(cornerY - fromY))
   const legOut = Math.max(Math.abs(toX - cornerX), Math.abs(toY - cornerY))
   const maxR = Math.min(legIn, legOut, r)
 
   if (maxR < 1) {
-    // Too short for rounding, just use a sharp corner
     return `L ${cornerX} ${cornerY}`
   }
 
-  // Start of the arc (radius back from corner along incoming direction)
   const arcStartX = cornerX - dxIn * maxR
   const arcStartY = cornerY - dyIn * maxR
-  // End of the arc (radius forward from corner along outgoing direction)
   const arcEndX = cornerX + dxOut * maxR
   const arcEndY = cornerY + dyOut * maxR
 
@@ -68,49 +49,43 @@ export function createSmoothStepStrategy(options?: SmoothStepOptions): EdgeRouti
 
   return {
     computePath(params: EdgeRoutingParams): string {
-      const { source, target } = params
-      const sd = sideDirection(source.side)
-      const td = sideDirection(target.side)
+      const waypoints = computeStepWaypoints(params.source, params.target, offset)
+      const n = waypoints.length
+      const first = waypoints[0]
+      const last = waypoints[n - 1]
 
-      const sx = source.x + sd.dx * offset
-      const sy = source.y + sd.dy * offset
-      const tx = target.x + td.dx * offset
-      const ty = target.y + td.dy * offset
+      if (n < 2 || !first || !last) return ''
 
-      const segments: string[] = [`M ${source.x} ${source.y}`]
+      const segments: string[] = [`M ${first.x} ${first.y}`]
 
-      if (isHorizontal(source.side) && isHorizontal(target.side)) {
-        const midX = (sx + tx) / 2
-        // H to midX, V to target.y, H to target.x
-        // Two corners: (midX, source.y) and (midX, target.y)
-        segments.push(
-          roundedCorner(source.x, source.y, midX, source.y, midX, target.y, radius),
-          roundedCorner(midX, source.y, midX, target.y, target.x, target.y, radius),
-          `L ${target.x} ${target.y}`,
-        )
-      } else if (!isHorizontal(source.side) && !isHorizontal(target.side)) {
-        const midY = (sy + ty) / 2
-        // V to midY, H to target.x, V to target.y
-        // Two corners: (source.x, midY) and (target.x, midY)
-        segments.push(
-          roundedCorner(source.x, source.y, source.x, midY, target.x, midY, radius),
-          roundedCorner(source.x, midY, target.x, midY, target.x, target.y, radius),
-          `L ${target.x} ${target.y}`,
-        )
-      } else if (isHorizontal(source.side)) {
-        // Source horizontal, target vertical — L-shaped, one corner at (target.x, source.y)
-        segments.push(
-          roundedCorner(source.x, source.y, target.x, source.y, target.x, target.y, radius),
-          `L ${target.x} ${target.y}`,
-        )
-      } else {
-        // Source vertical, target horizontal — L-shaped, one corner at (source.x, target.y)
-        segments.push(
-          roundedCorner(source.x, source.y, source.x, target.y, target.x, target.y, radius),
-          `L ${target.x} ${target.y}`,
-        )
+      if (n === 2) {
+        segments.push(`L ${last.x} ${last.y}`)
+        return segments.join(' ')
       }
 
+      // Compute segment lengths between adjacent waypoints
+      const segLen: number[] = []
+      for (let i = 0; i < n - 1; i++) {
+        const a = waypoints[i]!
+        const b = waypoints[i + 1]!
+        segLen.push(Math.abs(b.x - a.x) + Math.abs(b.y - a.y))
+      }
+
+      // Each interior segment is shared by two corners, so each corner
+      // can use at most half its length. First and last segments have
+      // only one corner, so the full length is available.
+      const segAvail = segLen.map((len, i) => (i === 0 || i === n - 2 ? len : len / 2))
+
+      // Apply rounded corners at each interior waypoint
+      for (let i = 1; i < n - 1; i++) {
+        const prev = waypoints[i - 1]!
+        const curr = waypoints[i]!
+        const next = waypoints[i + 1]!
+        const r = Math.min(radius, segAvail[i - 1] ?? 0, segAvail[i] ?? 0)
+        segments.push(roundedCorner(prev.x, prev.y, curr.x, curr.y, next.x, next.y, r))
+      }
+
+      segments.push(`L ${last.x} ${last.y}`)
       return segments.join(' ')
     },
   }

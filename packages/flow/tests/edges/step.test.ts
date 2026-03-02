@@ -67,7 +67,38 @@ describe('createStepStrategy', () => {
       target: { x: 200, y: 200, side: 'top' },
     })
     expect(d).toMatch(/^M /)
-    // Mixed sides produce L-shaped paths ending with V (vertical to target.y)
+    // Mixed sides end with V to target.y
     expect(d).toMatch(/V 200$/)
+  })
+
+  it('exits in source port direction for backward edges', () => {
+    // Source right port is to the right of target left port (backward flow)
+    const d = strategy.computePath({
+      source: { x: 700, y: 200, side: 'right' },
+      target: { x: 600, y: 500, side: 'left' },
+    })
+    // Path should start by going RIGHT (H to >= 700), not left
+    const parts = d.split(' ')
+    // First segment after M is H <value> — value should be > 700
+    const firstH = parts.indexOf('H')
+    expect(firstH).toBeGreaterThan(0)
+    expect(Number(parts[firstH + 1])).toBeGreaterThan(700)
+    // Path should end at target
+    expect(d).toMatch(/H 600$/)
+  })
+
+  it('uses S-route for backward vertical edges', () => {
+    // Source bottom port is below target top port
+    const d = strategy.computePath({
+      source: { x: 100, y: 300, side: 'bottom' },
+      target: { x: 200, y: 50, side: 'top' },
+    })
+    // Should exit downward (V > 300), not upward
+    const parts = d.split(' ')
+    const firstV = parts.indexOf('V')
+    expect(firstV).toBeGreaterThan(0)
+    expect(Number(parts[firstV + 1])).toBeGreaterThan(300)
+    // Path should end at target
+    expect(d).toMatch(/V 50$/)
   })
 })

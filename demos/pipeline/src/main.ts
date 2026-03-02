@@ -106,7 +106,7 @@ const routingStrategies: Record<string, EdgeRoutingStrategy> = {
   Bezier: createBezierStrategy(),
   Straight: createStraightStrategy(),
   Step: createStepStrategy(),
-  'Smooth Step': createSmoothStepStrategy(),
+  'Smooth Step': createSmoothStepStrategy({ borderRadius: 32 }),
 }
 
 function ToolbarButton(label: TNode, isActive: Signal<boolean>, onClick: () => void) {
