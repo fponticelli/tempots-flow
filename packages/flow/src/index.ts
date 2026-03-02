@@ -54,11 +54,14 @@ export type {
   EdgeRoutingStrategy,
   EdgeRoutingParams,
   LayoutAlgorithm,
+  CornerPosition,
+  BackgroundConfig,
+  ControlsConfig,
+  MinimapConfig,
+  PortTypeConfig,
   FlowConfig,
   FlowInstance,
 } from './types/config'
-
-export type { PortTypeConfig } from './types/config'
 
 export type { FlowEvents } from './types/events'
 

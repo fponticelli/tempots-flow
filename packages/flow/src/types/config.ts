@@ -54,6 +54,32 @@ export interface LayoutAlgorithm {
   ): ReadonlyMap<string, Position>
 }
 
+// --- UI components ---
+
+export type CornerPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+
+export interface BackgroundConfig {
+  readonly type?: 'dots' | 'lines' | 'cross'
+  readonly gap?: number
+  readonly size?: number
+  readonly color?: string
+}
+
+export interface ControlsConfig {
+  readonly position?: CornerPosition
+  readonly showZoomIn?: boolean
+  readonly showZoomOut?: boolean
+  readonly showFitView?: boolean
+}
+
+export interface MinimapConfig {
+  readonly position?: CornerPosition
+  readonly width?: number
+  readonly height?: number
+  readonly interactive?: boolean
+  readonly nodeColor?: string
+}
+
 // --- Port type system ---
 
 export interface PortTypeConfig {
@@ -101,6 +127,11 @@ export interface FlowConfig<N, E> {
 
   // Layout transitions
   readonly layoutTransitionDuration?: number
+
+  // UI components
+  readonly background?: BackgroundConfig | false
+  readonly controls?: ControlsConfig | false
+  readonly minimap?: MinimapConfig | false
 }
 
 // --- Flow instance ---

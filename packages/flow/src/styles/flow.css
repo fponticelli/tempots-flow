@@ -316,3 +316,97 @@
   background: var(--flow-selection-bg);
   pointer-events: none;
 }
+
+/* Background */
+.flow-background {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Controls */
+.flow-controls {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 5;
+  pointer-events: auto;
+}
+
+.flow-controls--bottom-left {
+  bottom: 12px;
+  left: 12px;
+}
+
+.flow-controls--bottom-right {
+  bottom: 12px;
+  right: 12px;
+}
+
+.flow-controls--top-left {
+  top: 12px;
+  left: 12px;
+}
+
+.flow-controls--top-right {
+  top: 12px;
+  right: 12px;
+}
+
+.flow-controls-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.5);
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition:
+    background var(--flow-transition-duration) var(--flow-transition-easing),
+    color var(--flow-transition-duration) var(--flow-transition-easing);
+}
+
+.flow-controls-button:hover {
+  background: rgba(0, 0, 0, 0.7);
+  color: #ffffff;
+}
+
+/* Minimap */
+.flow-minimap {
+  position: absolute;
+  z-index: 5;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
+}
+
+.flow-minimap--bottom-right {
+  bottom: 12px;
+  right: 12px;
+}
+
+.flow-minimap--bottom-left {
+  bottom: 12px;
+  left: 12px;
+}
+
+.flow-minimap--top-left {
+  top: 12px;
+  left: 12px;
+}
+
+.flow-minimap--top-right {
+  top: 12px;
+  right: 12px;
+}
+
+.flow-minimap canvas {
+  display: block;
+}

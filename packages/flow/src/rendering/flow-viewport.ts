@@ -4,7 +4,13 @@ import type { Signal } from '@tempots/core'
 import type { Graph } from '../types/graph'
 import type { PortRef } from '../types/graph'
 import type { Viewport, ComputedEdgePath, Position, Dimensions } from '../types/layout'
-import type { NodeRenderer, EdgeRoutingStrategy } from '../types/config'
+import type {
+  NodeRenderer,
+  EdgeRoutingStrategy,
+  BackgroundConfig,
+  ControlsConfig,
+  MinimapConfig,
+} from '../types/config'
 import type { InteractionManager, InteractionTarget } from '../interaction/interaction-manager'
 import { TransformLayer } from './transform-layer'
 import { EdgeLayer } from './edge-layer'
@@ -12,20 +18,46 @@ import { NodeLayer } from './node-layer'
 import { ConnectionPreview } from './connection-preview'
 import { SelectionBox } from './selection-box'
 import { OverlayLayer } from './overlay-layer'
+import { Background } from './background'
 
-export function FlowViewport<N, E>(
-  graph: Signal<Graph<N, E>>,
-  viewport: Signal<Viewport>,
-  positions: Signal<ReadonlyMap<string, Position>>,
-  edgePaths: Signal<ComputedEdgePath[]>,
-  interactionManager: InteractionManager,
-  onDimensionsChange: (nodeId: string, dims: Dimensions) => void,
-  setContainerRect: (getter: () => DOMRect) => void,
-  edgeRouting: EdgeRoutingStrategy,
-  transitioning: Signal<boolean>,
-  allowManualPositioning: Signal<boolean>,
-  nodeRenderer?: NodeRenderer<N>,
-): Renderable {
+export interface FlowViewportOptions<N, E> {
+  readonly graph: Signal<Graph<N, E>>
+  readonly viewport: Signal<Viewport>
+  readonly positions: Signal<ReadonlyMap<string, Position>>
+  readonly dimensions: Signal<ReadonlyMap<string, Dimensions>>
+  readonly edgePaths: Signal<ComputedEdgePath[]>
+  readonly interactionManager: InteractionManager
+  readonly onDimensionsChange: (nodeId: string, dims: Dimensions) => void
+  readonly setContainerRect: (getter: () => DOMRect) => void
+  readonly edgeRouting: EdgeRoutingStrategy
+  readonly transitioning: Signal<boolean>
+  readonly allowManualPositioning: Signal<boolean>
+  readonly nodeRenderer?: NodeRenderer<N>
+  readonly background?: BackgroundConfig | false
+  readonly controls?: ControlsConfig | false
+  readonly minimap?: MinimapConfig | false
+  readonly setViewport: (v: Partial<Viewport>) => void
+  readonly getContainerRect: () => DOMRect
+  readonly zoomIn: () => void
+  readonly zoomOut: () => void
+  readonly fitView: () => void
+}
+
+export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderable {
+  const {
+    graph,
+    viewport,
+    positions,
+    dimensions,
+    edgePaths,
+    interactionManager,
+    onDimensionsChange,
+    setContainerRect,
+    edgeRouting,
+    transitioning,
+    allowManualPositioning,
+    nodeRenderer,
+  } = options
   const interactionState = interactionManager.state
 
   function handleInteraction(event: PointerEvent, target: InteractionTarget) {
@@ -81,6 +113,8 @@ export function FlowViewport<N, E>(
       setContainerRect(() => element.getBoundingClientRect())
     }),
 
+    options.background !== false ? Background(viewport, options.background ?? {}) : null,
+
     TransformLayer(
       viewport,
       EdgeLayer(edgePaths, interactionState, handleInteraction, setHoveredEdge, transitioning),
@@ -99,6 +133,17 @@ export function FlowViewport<N, E>(
       SelectionBox(interactionState),
     ),
 
-    OverlayLayer(),
+    OverlayLayer({
+      controls: options.controls,
+      minimap: options.minimap,
+      positions,
+      dimensions,
+      viewport,
+      setViewport: options.setViewport,
+      getContainerRect: options.getContainerRect,
+      zoomIn: options.zoomIn,
+      zoomOut: options.zoomOut,
+      fitView: options.fitView,
+    }),
   )
 }

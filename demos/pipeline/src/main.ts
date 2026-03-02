@@ -96,6 +96,9 @@ const flow = createFlow({
   layout: hierarchicalLayout({ direction: 'LR', layerSpacing: 250, nodeSpacing: 60 }),
   viewport: { x: 30, y: 30, zoom: 1 },
   layoutTransitionDuration: 300,
+  background: { type: 'dots', gap: 20 },
+  controls: { position: 'bottom-left' },
+  minimap: { position: 'bottom-right', width: 200, height: 150 },
   events: {
     onSelectionChange(nodeIds, edgeIds) {
       console.log('Selection:', { nodes: [...nodeIds], edges: [...edgeIds] })

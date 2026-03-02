@@ -63,20 +63,105 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     layoutEngine.updateDimensions(nodeId, dims)
   }
 
+  // --- Viewport helpers ---
+  const zoomStep = config.zoomStep ?? 0.2
+  const minZoom = config.minZoom ?? 0.1
+  const maxZoom = config.maxZoom ?? 4
+
+  function zoomIn() {
+    viewportProp.update((v) => {
+      const newZoom = Math.min(maxZoom, v.zoom + zoomStep)
+      const rect = getContainerRect()
+      const cx = rect.width / 2
+      const cy = rect.height / 2
+      const ratio = newZoom / v.zoom
+      return {
+        x: cx - (cx - v.x) * ratio,
+        y: cy - (cy - v.y) * ratio,
+        zoom: newZoom,
+      }
+    })
+  }
+
+  function zoomOut() {
+    viewportProp.update((v) => {
+      const newZoom = Math.max(minZoom, v.zoom - zoomStep)
+      const rect = getContainerRect()
+      const cx = rect.width / 2
+      const cy = rect.height / 2
+      const ratio = newZoom / v.zoom
+      return {
+        x: cx - (cx - v.x) * ratio,
+        y: cy - (cy - v.y) * ratio,
+        zoom: newZoom,
+      }
+    })
+  }
+
+  function fitView(padding = config.fitViewPadding ?? 50) {
+    const positions = layoutEngine.positions.value
+    const dimensions = layoutEngine.dimensions.value
+    if (positions.size === 0) return
+
+    let minX = Infinity
+    let minY = Infinity
+    let maxX = -Infinity
+    let maxY = -Infinity
+
+    for (const [nodeId, pos] of positions) {
+      const dims = dimensions.get(nodeId) ?? { width: 180, height: 80 }
+      minX = Math.min(minX, pos.x)
+      minY = Math.min(minY, pos.y)
+      maxX = Math.max(maxX, pos.x + dims.width)
+      maxY = Math.max(maxY, pos.y + dims.height)
+    }
+
+    const rect = getContainerRect()
+    const contentWidth = maxX - minX
+    const contentHeight = maxY - minY
+    const availWidth = rect.width - padding * 2
+    const availHeight = rect.height - padding * 2
+
+    if (availWidth <= 0 || availHeight <= 0) return
+
+    const zoom = Math.min(availWidth / contentWidth, availHeight / contentHeight, maxZoom)
+    const clampedZoom = Math.max(minZoom, zoom)
+
+    const centerX = (minX + maxX) / 2
+    const centerY = (minY + maxY) / 2
+
+    viewportProp.set({
+      x: rect.width / 2 - centerX * clampedZoom,
+      y: rect.height / 2 - centerY * clampedZoom,
+      zoom: clampedZoom,
+    })
+  }
+
   // --- Build renderable ---
-  const renderable = FlowViewport(
-    graphProp,
-    viewportProp,
-    layoutEngine.positions,
+  const renderable = FlowViewport({
+    graph: graphProp,
+    viewport: viewportProp,
+    positions: layoutEngine.positions,
+    dimensions: layoutEngine.dimensions,
     edgePaths,
     interactionManager,
     onDimensionsChange,
     setContainerRect,
     edgeRouting,
-    layoutEngine.transitioning,
-    layoutEngine.allowManualPositioning,
-    config.nodeRenderer,
-  )
+    transitioning: layoutEngine.transitioning,
+    allowManualPositioning: layoutEngine.allowManualPositioning,
+    nodeRenderer: config.nodeRenderer,
+    background: config.background,
+    controls: config.controls,
+    minimap: config.minimap,
+    setViewport(partial) {
+      viewportProp.update((v) => ({ ...v, ...partial }))
+    },
+    getContainerRect: () => getContainerRect(),
+    zoomIn,
+    zoomOut,
+    fitView,
+  })
 
   // --- Instance API ---
   return {
@@ -94,48 +179,7 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
       viewportProp.update((v) => ({ ...v, ...partial }))
     },
 
-    fitView(padding = config.fitViewPadding ?? 50) {
-      const positions = layoutEngine.positions.value
-      const dimensions = layoutEngine.dimensions.value
-      if (positions.size === 0) return
-
-      let minX = Infinity
-      let minY = Infinity
-      let maxX = -Infinity
-      let maxY = -Infinity
-
-      for (const [nodeId, pos] of positions) {
-        const dims = dimensions.get(nodeId) ?? { width: 180, height: 80 }
-        minX = Math.min(minX, pos.x)
-        minY = Math.min(minY, pos.y)
-        maxX = Math.max(maxX, pos.x + dims.width)
-        maxY = Math.max(maxY, pos.y + dims.height)
-      }
-
-      const rect = getContainerRect()
-      const contentWidth = maxX - minX
-      const contentHeight = maxY - minY
-      const availWidth = rect.width - padding * 2
-      const availHeight = rect.height - padding * 2
-
-      if (availWidth <= 0 || availHeight <= 0) return
-
-      const zoom = Math.min(
-        availWidth / contentWidth,
-        availHeight / contentHeight,
-        config.maxZoom ?? 4,
-      )
-      const clampedZoom = Math.max(config.minZoom ?? 0.1, zoom)
-
-      const centerX = (minX + maxX) / 2
-      const centerY = (minY + maxY) / 2
-
-      viewportProp.set({
-        x: rect.width / 2 - centerX * clampedZoom,
-        y: rect.height / 2 - centerY * clampedZoom,
-        zoom: clampedZoom,
-      })
-    },
+    fitView,
 
     zoomTo(zoom, center) {
       const min = config.minZoom ?? 0.1
