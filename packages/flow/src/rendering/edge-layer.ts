@@ -1,39 +1,42 @@
-import { svg, attr, on, KeyedForEach } from '@tempots/dom'
+import { svg, attr, on, KeyedForEach, computedOf } from '@tempots/dom'
 import type { TNode } from '@tempots/dom'
-import type { Signal, Prop } from '@tempots/core'
+import type { Signal } from '@tempots/core'
 import type { ComputedEdgePath } from '../types/layout'
 import type { InteractionState } from '../types/interaction'
 import type { InteractionTarget } from '../interaction/interaction-manager'
 import { DefaultEdgeRenderer } from './default-edge-renderer'
 
 export function EdgeLayer(
-  edgePaths: Signal<readonly ComputedEdgePath[]>,
-  interactionState: Prop<InteractionState>,
+  edgePaths: Signal<ComputedEdgePath[]>,
+  interactionState: Signal<InteractionState>,
   onInteraction: (event: PointerEvent, target: InteractionTarget) => void,
+  setHoveredEdge: (edgeId: string | null) => void,
 ): TNode {
   return svg.svg(
     attr.class('flow-edge-layer'),
 
     KeyedForEach(
-      edgePaths.map((p): ComputedEdgePath[] => p as ComputedEdgePath[]),
+      edgePaths,
       (ep) => ep.edgeId,
       (edgePathSignal) => {
-        const edgeId = edgePathSignal.get().edgeId
-        const isSelected = interactionState.map((s) => s.selectedEdgeIds.has(edgeId))
-        const isHovered = interactionState.map((s) => s.hoveredEdgeId === edgeId)
+        const edgeId = edgePathSignal.$.edgeId
+        const isSelected = computedOf(interactionState, edgeId)((s, id) =>
+          s.selectedEdgeIds.has(id),
+        )
+        const isHovered = computedOf(interactionState, edgeId)(
+          (s, id) => s.hoveredEdgeId === id,
+        )
 
         return svg.g(
           on.pointerdown((e: PointerEvent) => {
             e.stopPropagation()
-            onInteraction(e, { type: 'edge', edgeId })
+            onInteraction(e, { type: 'edge', edgeId: edgeId.value })
           }),
           on.pointerenter(() => {
-            interactionState.update((s) => ({ ...s, hoveredEdgeId: edgeId }))
+            setHoveredEdge(edgeId.value)
           }),
           on.pointerleave(() => {
-            interactionState.update((s) =>
-              s.hoveredEdgeId === edgeId ? { ...s, hoveredEdgeId: null } : s,
-            )
+            setHoveredEdge(null)
           }),
           DefaultEdgeRenderer(edgePathSignal, isSelected, isHovered),
         )

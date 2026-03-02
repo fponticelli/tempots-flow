@@ -1,4 +1,4 @@
-import { prop, computed } from '@tempots/core'
+import { prop, computedOf } from '@tempots/core'
 import type { Signal, Prop } from '@tempots/core'
 import type { Graph } from '../types/graph'
 import type { LayoutAlgorithm } from '../types/config'
@@ -31,21 +31,17 @@ export function createLayoutEngine<N, E>(
 
   let transitionTimer: ReturnType<typeof setTimeout> | null = null
 
-  const positions = computed(() => {
-    const g = graph.value
-    const dims = dimensionMap.value
-    const overrides = positionOverrides.value
-    const algo = algorithmProp.value
-    return algo.layout(g, dims, overrides)
-  }, [graph, dimensionMap, positionOverrides, algorithmProp])
+  const positions = computedOf(
+    graph,
+    dimensionMap,
+    positionOverrides,
+    algorithmProp,
+  )((g, dims, overrides, algo) => algo.layout(g, dims, overrides))
 
-  const layoutState = computed(
-    () => ({
-      positions: positions.value,
-      dimensions: dimensionMap.value,
-    }),
-    [positions, dimensionMap],
-  )
+  const layoutState = computedOf(positions, dimensionMap)((pos, dims) => ({
+    positions: pos,
+    dimensions: dims,
+  }))
 
   function triggerTransition() {
     if (transitionDuration <= 0) return

@@ -1,7 +1,7 @@
 // Configuration types for createFlow()
 
-import type { Signal, Prop } from '@tempots/core'
-import type { TNode } from '@tempots/dom'
+import type { Signal, Prop, Value } from '@tempots/core'
+import type { TNode, Renderable } from '@tempots/dom'
 import type { Graph, GraphNode, PortDefinition } from './graph'
 import type {
   Position,
@@ -15,21 +15,21 @@ import type { FlowEvents } from './events'
 
 // --- Node rendering ---
 
-export type NodeRenderer<N> = (node: GraphNode<N>, context: NodeRenderContext) => TNode
+export type NodeRenderer<N> = (node: Signal<GraphNode<N>>, context: NodeRenderContext) => TNode
 
 export interface NodeRenderContext {
   readonly isSelected: Signal<boolean>
   readonly isHovered: Signal<boolean>
   readonly isDragging: Signal<boolean>
   readonly diagnostics: Signal<readonly Diagnostic[]>
-  readonly port: (portId: string) => TNode
-  readonly ports: Signal<readonly PortWithState[]>
+  readonly port: (portId: Value<string>) => TNode
+  readonly ports: Signal<PortWithState[]>
 }
 
 export interface PortWithState {
   readonly definition: PortDefinition
-  readonly isConnected: Signal<boolean>
-  readonly connectionCount: Signal<number>
+  readonly isConnected: boolean
+  readonly connectionCount: number
 }
 
 // --- Edge rendering ---
@@ -65,7 +65,7 @@ export interface PortTypeConfig {
 // --- Main config ---
 
 export interface FlowConfig<N, E> {
-  readonly graph: Graph<N, E> | Prop<Graph<N, E>>
+  readonly graph: Prop<Graph<N, E>>
   readonly nodeRenderer?: NodeRenderer<N>
   readonly edgeRouting?: EdgeRoutingStrategy
   readonly layout?: LayoutAlgorithm
@@ -109,7 +109,7 @@ export interface FlowInstance<N, E> {
   readonly viewport: Signal<Viewport>
   readonly selectedNodeIds: Signal<ReadonlySet<string>>
   readonly selectedEdgeIds: Signal<ReadonlySet<string>>
-  readonly edgePaths: Signal<readonly ComputedEdgePath[]>
+  readonly edgePaths: Signal<ComputedEdgePath[]>
 
   // Graph mutations
   updateGraph(updater: (graph: Graph<N, E>) => Graph<N, E>): void
@@ -131,7 +131,7 @@ export interface FlowInstance<N, E> {
   setLayout(algorithm: LayoutAlgorithm): void
 
   // The renderable to mount
-  readonly renderable: TNode
+  readonly renderable: Renderable
 
   // Cleanup
   dispose(): void

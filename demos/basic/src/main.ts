@@ -1,4 +1,5 @@
 import { render } from '@tempots/dom'
+import { prop } from '@tempots/core'
 import { createFlow } from '@tempots/flow'
 import type { Graph } from '@tempots/flow'
 import '@tempots/flow/css'
@@ -53,7 +54,7 @@ const graph: Graph<string, string> = {
 }
 
 const flow = createFlow({
-  graph,
+  graph: prop(graph),
   initialPositions: new Map([
     ['node-1', { x: 50, y: 50 }],
     ['node-2', { x: 300, y: 150 }],

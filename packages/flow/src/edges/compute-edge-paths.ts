@@ -1,5 +1,5 @@
 import type { Signal } from '@tempots/core'
-import { computed } from '@tempots/core'
+import { computedOf } from '@tempots/core'
 import type { Graph } from '../types/graph'
 import type { ComputedEdgePath, ComputedPortPosition, Position, Dimensions } from '../types/layout'
 import type { EdgeRoutingStrategy } from '../types/config'
@@ -15,12 +15,8 @@ export function createEdgePathsSignal<N, E>(
   positions: Signal<ReadonlyMap<string, Position>>,
   dimensions: Signal<ReadonlyMap<string, Dimensions>>,
   routing: EdgeRoutingStrategy,
-): Signal<readonly ComputedEdgePath[]> {
-  return computed((): readonly ComputedEdgePath[] => {
-    const g = graph.value
-    const posMap = positions.value
-    const dimMap = dimensions.value
-
+): Signal<ComputedEdgePath[]> {
+  return computedOf(graph, positions, dimensions)((g, posMap, dimMap): ComputedEdgePath[] => {
     const portPositionCache = new Map<string, ReadonlyMap<string, ComputedPortPosition>>()
 
     function getPortPositions(nodeId: string) {
@@ -56,5 +52,5 @@ export function createEdgePathsSignal<N, E>(
         },
       }
     })
-  }, [graph, positions, dimensions])
+  })
 }

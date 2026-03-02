@@ -1,6 +1,4 @@
 import { prop } from '@tempots/core'
-import type { Prop } from '@tempots/core'
-import type { Graph } from '../types/graph'
 import type { Viewport, Dimensions } from '../types/layout'
 import type { FlowConfig, FlowInstance } from '../types/config'
 import { createLayoutEngine } from '../layout/layout-engine'
@@ -13,9 +11,7 @@ const DEFAULT_VIEWPORT: Viewport = { x: 0, y: 0, zoom: 1 }
 
 export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
   // --- Graph signal ---
-  const graphProp: Prop<Graph<N, E>> = isSignal(config.graph)
-    ? (config.graph as Prop<Graph<N, E>>)
-    : prop(config.graph as Graph<N, E>)
+  const graphProp = config.graph
 
   // --- Viewport signal ---
   const viewportProp = prop<Viewport>({
@@ -194,13 +190,4 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
       // Signals auto-dispose with scope in @tempots/dom
     },
   }
-}
-
-function isSignal(value: unknown): boolean {
-  return (
-    value !== null &&
-    typeof value === 'object' &&
-    'value' in (value as Record<string, unknown>) &&
-    'map' in (value as Record<string, unknown>)
-  )
 }

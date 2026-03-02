@@ -1,7 +1,7 @@
-import { html, attr, KeyedForEach } from '@tempots/dom'
+import { html, attr, KeyedForEach, computedOf } from '@tempots/dom'
 import type { TNode } from '@tempots/dom'
-import type { Signal, Prop } from '@tempots/core'
-import type { Graph, GraphNode } from '../types/graph'
+import type { Signal } from '@tempots/core'
+import type { Graph, GraphNode, PortRef } from '../types/graph'
 import type { Position, Dimensions } from '../types/layout'
 import type { InteractionState } from '../types/interaction'
 import type { NodeRenderer } from '../types/config'
@@ -13,8 +13,10 @@ const ZERO_POS: Position = { x: 0, y: 0 }
 export function NodeLayer<N, E>(
   graph: Signal<Graph<N, E>>,
   positions: Signal<ReadonlyMap<string, Position>>,
-  interactionState: Prop<InteractionState>,
+  interactionState: Signal<InteractionState>,
   onInteraction: (event: PointerEvent, target: InteractionTarget) => void,
+  setHoveredNode: (nodeId: string | null) => void,
+  setHoveredPort: (portRef: PortRef | null) => void,
   onDimensionsChange: (nodeId: string, dims: Dimensions) => void,
   transitioning: Signal<boolean>,
   nodeRenderer?: NodeRenderer<N>,
@@ -26,15 +28,19 @@ export function NodeLayer<N, E>(
       graph.map((g) => g.nodes as GraphNode<N>[]),
       (node) => node.id,
       (nodeSignal) => {
-        const node = nodeSignal.get()
-        const nodePosition = positions.map((p) => p.get(node.id) ?? ZERO_POS)
+        const nodePosition = computedOf(
+          positions,
+          nodeSignal,
+        )((p, node) => p.get(node.id) ?? ZERO_POS)
 
         return NodeWrapper(
-          node,
+          nodeSignal,
           nodePosition,
           graph,
           interactionState,
           onInteraction,
+          setHoveredNode,
+          setHoveredPort,
           onDimensionsChange,
           transitioning,
           nodeRenderer,

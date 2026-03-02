@@ -1,4 +1,5 @@
 import { render, html, attr, on, style } from '@tempots/dom'
+import { prop } from '@tempots/core'
 import { createFlow } from '@tempots/flow'
 import type { Graph, LayoutAlgorithm } from '@tempots/flow'
 import { hierarchicalLayout, gridLayout, manualLayout } from '@tempots/flow/layouts'
@@ -89,7 +90,7 @@ const layouts: Record<string, LayoutAlgorithm> = {
 }
 
 const flow = createFlow({
-  graph,
+  graph: prop(graph),
   layout: hierarchicalLayout({ direction: 'LR', layerSpacing: 250, nodeSpacing: 60 }),
   layoutTransitionDuration: 300,
   events: {

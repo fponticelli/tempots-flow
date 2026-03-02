@@ -9,36 +9,23 @@ export function SelectionBox(interactionState: Signal<InteractionState>): TNode 
   )
 
   return When(isSelecting, () => {
-    const left = interactionState.map((s) => {
+    const rect = interactionState.map((s) => {
       const box = s.selectionBox
-      if (!box) return 0
-      return Math.min(box.start.x, box.current.x)
-    })
-
-    const top = interactionState.map((s) => {
-      const box = s.selectionBox
-      if (!box) return 0
-      return Math.min(box.start.y, box.current.y)
-    })
-
-    const width = interactionState.map((s) => {
-      const box = s.selectionBox
-      if (!box) return 0
-      return Math.abs(box.current.x - box.start.x)
-    })
-
-    const height = interactionState.map((s) => {
-      const box = s.selectionBox
-      if (!box) return 0
-      return Math.abs(box.current.y - box.start.y)
+      if (!box) return { left: 0, top: 0, width: 0, height: 0 }
+      return {
+        left: Math.min(box.start.x, box.current.x),
+        top: Math.min(box.start.y, box.current.y),
+        width: Math.abs(box.current.x - box.start.x),
+        height: Math.abs(box.current.y - box.start.y),
+      }
     })
 
     return html.div(
       attr.class('flow-selection-box'),
-      style.left(left.map((v) => `${v}px`)),
-      style.top(top.map((v) => `${v}px`)),
-      style.width(width.map((v) => `${v}px`)),
-      style.height(height.map((v) => `${v}px`)),
+      style.left(rect.$.left.map((v) => `${v}px`)),
+      style.top(rect.$.top.map((v) => `${v}px`)),
+      style.width(rect.$.width.map((v) => `${v}px`)),
+      style.height(rect.$.height.map((v) => `${v}px`)),
     )
   })
 }
