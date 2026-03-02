@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { gridLayout } from './grid'
-import type { Graph, GraphNode } from '../types/graph'
-import type { Dimensions } from '../types/layout'
+import { gridLayout } from '../../src/layout/grid'
+import type { Graph, GraphNode } from '../../src/types/graph'
+import type { Dimensions } from '../../src/types/layout'
 
 function makeNodes(count: number): readonly GraphNode<string>[] {
   return Array.from({ length: count }, (_, i) => ({

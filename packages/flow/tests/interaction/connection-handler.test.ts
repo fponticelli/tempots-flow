@@ -1,13 +1,13 @@
 import { describe, it, expect, vi } from 'vitest'
 import { prop } from '@tempots/core'
-import { createInitialInteractionState } from '../types/interaction'
-import type { Graph } from '../types/graph'
-import type { Position, Dimensions } from '../types/layout'
+import { createInitialInteractionState } from '../../src/types/interaction'
+import type { Graph } from '../../src/types/graph'
+import type { Position, Dimensions } from '../../src/types/layout'
 import {
   handleConnectionStart,
   handleConnectionMove,
   handleConnectionEnd,
-} from './connection-handler'
+} from '../../src/interaction/connection-handler'
 
 function makeState() {
   return prop(createInitialInteractionState())

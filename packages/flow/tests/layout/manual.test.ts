@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { manualLayout } from './manual'
-import type { Graph, GraphNode } from '../types/graph'
+import { manualLayout } from '../../src/layout/manual'
+import type { Graph, GraphNode } from '../../src/types/graph'
 
 const nodes: readonly GraphNode<string>[] = [
   { id: 'a', data: 'A', ports: [] },

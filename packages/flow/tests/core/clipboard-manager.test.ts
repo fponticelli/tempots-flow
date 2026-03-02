@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import type { Graph } from '../types/graph'
-import type { Position } from '../types/layout'
-import { createClipboardManager } from './clipboard-manager'
+import type { Graph } from '../../src/types/graph'
+import type { Position } from '../../src/types/layout'
+import { createClipboardManager } from '../../src/core/clipboard-manager'
 
 const graph: Graph<string, string> = {
   nodes: [

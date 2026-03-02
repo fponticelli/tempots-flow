@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { prop } from '@tempots/core'
-import type { Graph } from '../types/graph'
-import type { Position } from '../types/layout'
-import { createHistoryManager } from './history-manager'
+import type { Graph } from '../../src/types/graph'
+import type { Position } from '../../src/types/layout'
+import { createHistoryManager } from '../../src/core/history-manager'
 
 function makeGraph(nodeIds: string[]): Graph<string, string> {
   return {

@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import type { Graph } from '../types/graph'
-import { portTypeCheck, portCardinality, requiredPorts, acyclic, compose } from './index'
+import type { Graph } from '../../src/types/graph'
+import {
+  portTypeCheck,
+  portCardinality,
+  requiredPorts,
+  acyclic,
+  compose,
+} from '../../src/validators/index'
 
 function makeGraph(): Graph<string, string> {
   return {

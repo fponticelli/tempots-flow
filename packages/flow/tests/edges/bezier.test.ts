@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { createBezierStrategy } from './bezier'
+import { createBezierStrategy } from '../../src/edges/bezier'
 
 describe('createBezierStrategy', () => {
   const strategy = createBezierStrategy()

@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { prop } from '@tempots/core'
-import type { Position } from '../types/layout'
-import { createAnimatedPositions } from './animate-positions'
-import { easing } from './easing'
-import type { LayoutTransitionConfig } from './animation-config'
+import type { Position } from '../../src/types/layout'
+import { createAnimatedPositions } from '../../src/animation/animate-positions'
+import { easing } from '../../src/animation/easing'
+import type { LayoutTransitionConfig } from '../../src/animation/animation-config'
 
 function makeConfig(overrides?: Partial<LayoutTransitionConfig>): LayoutTransitionConfig {
   return {

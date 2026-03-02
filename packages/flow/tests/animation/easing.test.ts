@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { easing } from './easing'
+import { easing } from '../../src/animation/easing'
 
 describe('easing', () => {
   const names = Object.keys(easing) as (keyof typeof easing)[]

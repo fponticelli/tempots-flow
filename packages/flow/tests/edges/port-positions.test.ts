@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computePortPosition, computePortPositionsForNode } from './port-positions'
+import { computePortPosition, computePortPositionsForNode } from '../../src/edges/port-positions'
 
 describe('computePortPosition', () => {
   it('places input ports on the left side', () => {

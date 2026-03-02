@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { screenToGraph, graphToScreen, clampZoom, snapToGrid } from './coordinate-utils'
+import {
+  screenToGraph,
+  graphToScreen,
+  clampZoom,
+  snapToGrid,
+} from '../../src/core/coordinate-utils'
 
 const rect = { left: 100, top: 50, width: 800, height: 600 } as DOMRect
 

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { hierarchicalLayout } from './hierarchical'
-import type { Graph, GraphNode, GraphEdge } from '../types/graph'
-import type { Dimensions, Position } from '../types/layout'
+import { hierarchicalLayout } from '../../src/layout/hierarchical'
+import type { Graph, GraphNode, GraphEdge } from '../../src/types/graph'
+import type { Dimensions, Position } from '../../src/types/layout'
 
 // --- Test helpers ---
 

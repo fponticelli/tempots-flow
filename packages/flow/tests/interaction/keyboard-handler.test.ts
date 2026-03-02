@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { prop } from '@tempots/core'
-import type { Graph } from '../types/graph'
-import type { Position } from '../types/layout'
-import { handleKeyDown, type KeyboardActions } from './keyboard-handler'
-import { createHistoryManager } from '../core/history-manager'
-import { createClipboardManager } from '../core/clipboard-manager'
+import type { Graph } from '../../src/types/graph'
+import type { Position } from '../../src/types/layout'
+import { handleKeyDown, type KeyboardActions } from '../../src/interaction/keyboard-handler'
+import { createHistoryManager } from '../../src/core/history-manager'
+import { createClipboardManager } from '../../src/core/clipboard-manager'
 
 const graph: Graph<string, string> = {
   nodes: [

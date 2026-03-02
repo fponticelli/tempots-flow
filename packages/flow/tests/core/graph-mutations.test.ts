@@ -8,8 +8,8 @@ import {
   removeEdge,
   removeEdges,
   connectedEdges,
-} from './graph-mutations'
-import type { Graph, GraphNode, GraphEdge } from '../types/graph'
+} from '../../src/core/graph-mutations'
+import type { Graph, GraphNode, GraphEdge } from '../../src/types/graph'
 
 function makeGraph(): Graph<string, string> {
   return {

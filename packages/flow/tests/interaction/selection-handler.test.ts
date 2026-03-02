@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { prop } from '@tempots/core'
-import { createInitialInteractionState } from '../types/interaction'
-import { handleNodeClick, handleEdgeClick, handleBackgroundClick } from './selection-handler'
+import { createInitialInteractionState } from '../../src/types/interaction'
+import {
+  handleNodeClick,
+  handleEdgeClick,
+  handleBackgroundClick,
+} from '../../src/interaction/selection-handler'
 
 function makeState() {
   return prop(createInitialInteractionState())
