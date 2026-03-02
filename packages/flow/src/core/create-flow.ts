@@ -1,5 +1,4 @@
 import { prop } from '@tempots/core'
-import type { Signal, Prop } from '@tempots/core'
 import type { Viewport, Dimensions } from '../types/layout'
 import type { FlowConfig, FlowInstance } from '../types/config'
 import { createLayoutEngine } from '../layout/layout-engine'
@@ -13,7 +12,6 @@ import { createClipboardManager } from './clipboard-manager'
 import { handleKeyDown } from '../interaction/keyboard-handler'
 import { removeNodes, removeEdges } from './graph-mutations'
 import { resolveAnimationConfig } from '../animation/animation-config'
-import { createAnimatedPositions } from '../animation/animate-positions'
 import { createViewportTween } from '../animation/viewport-tween'
 import { createReducedMotionSignal } from '../animation/reduced-motion'
 
@@ -36,42 +34,27 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     !animationConfig.enabled || (animationConfig.respectReducedMotion && reducedMotion.value)
 
   // --- Layout engine ---
+  const layoutDuration = effectivelyDisabled ? 0 : animationConfig.layout.duration
   const layoutEngine = createLayoutEngine(graphProp, config.layout, config.initialPositions)
 
-  // --- Drag state (set later from interaction manager) ---
-  const isDragging = prop(false)
+  // --- Layout transition timer (CSS handles the actual animation) ---
+  let transitionTimer: ReturnType<typeof setTimeout> | null = null
 
-  // --- Animated positions (bypassed during drag) ---
-  const animatedPositions = effectivelyDisabled
-    ? layoutEngine.positions
-    : createAnimatedPositions(
-        layoutEngine.positions,
-        animationConfig.layout,
-        reducedMotion,
-        isDragging,
-      )
-
-  // --- Transitioning signal (driven by comparing animated vs raw positions) ---
-  function updateTransitioning() {
-    const isTransitioning = animatedPositions.value !== layoutEngine.positions.value
-    if (layoutEngine.transitioning.value !== isTransitioning) {
-      layoutEngine.transitioning.set(isTransitioning)
-    }
-  }
-
-  // Check transitioning state when animated positions change
-  if (animatedPositions !== layoutEngine.positions) {
-    ;(animatedPositions as Signal<unknown>).map(() => {
-      updateTransitioning()
-      return null
-    })
+  function triggerLayoutTransition() {
+    if (layoutDuration <= 0) return
+    if (transitionTimer) clearTimeout(transitionTimer)
+    layoutEngine.transitioning.set(true)
+    transitionTimer = setTimeout(() => {
+      layoutEngine.transitioning.set(false)
+      transitionTimer = null
+    }, layoutDuration)
   }
 
   // --- Edge routing ---
   const edgeRouting = config.edgeRouting ?? createBezierStrategy()
   const edgePaths = createEdgePathsSignal(
     graphProp,
-    animatedPositions,
+    layoutEngine.positions,
     layoutEngine.dimensions,
     edgeRouting,
   )
@@ -123,12 +106,6 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
   // --- Derived signals ---
   const selectedNodeIds = interactionManager.state.map((s) => s.selectedNodeIds)
   const selectedEdgeIds = interactionManager.state.map((s) => s.selectedEdgeIds)
-
-  // Track drag state for animation bypass
-  interactionManager.state.map((s) => {
-    isDragging.set(s.mode === 'dragging-nodes')
-    return null
-  })
 
   // --- Dimension change handler ---
   function onDimensionsChange(nodeId: string, dims: Dimensions) {
@@ -308,14 +285,8 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     })
   }
 
-  // --- Animation state ---
-  const isAnimatingProp: Prop<boolean> = prop(false)
-  if (animatedPositions !== layoutEngine.positions) {
-    ;(animatedPositions as Signal<unknown>).map(() => {
-      isAnimatingProp.set(animatedPositions.value !== layoutEngine.positions.value)
-      return null
-    })
-  }
+  // --- Animation state (tracks CSS transition period) ---
+  const isAnimating = layoutEngine.transitioning
 
   // --- Enter animation config ---
   const enterAnimation = animationConfig.enterExit.enabled
@@ -326,7 +297,7 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
   const renderable = FlowViewport({
     graph: graphProp,
     viewport: viewportProp,
-    positions: animatedPositions,
+    positions: layoutEngine.positions,
     dimensions: layoutEngine.dimensions,
     edgePaths,
     interactionManager,
@@ -397,6 +368,7 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
 
     setLayout(algorithm) {
       layoutEngine.setAlgorithm(algorithm)
+      triggerLayoutTransition()
       requestAnimationFrame(() => fitView())
     },
 
@@ -410,7 +382,7 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     deleteSelection,
     selectAll,
 
-    isAnimating: isAnimatingProp,
+    isAnimating,
 
     renderable,
 
