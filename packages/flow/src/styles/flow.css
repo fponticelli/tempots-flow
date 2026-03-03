@@ -490,22 +490,48 @@
 
 /* ---- Vertical Port Placement ---- */
 
-.flow--port-placement-vertical .flow-node-body {
+/* Node becomes a flex column so we can reorder children */
+.flow--port-placement-vertical .flow-node {
+  display: flex;
   flex-direction: column;
-  align-items: stretch;
 }
 
-.flow--port-placement-vertical .flow-node-ports {
+/* Flatten the body so its children join the node's flex layout */
+.flow--port-placement-vertical .flow-node-body {
+  display: contents;
+}
+
+/* Preserve padding for non-port content inside the body */
+.flow--port-placement-vertical .flow-node-body > *:not(.flow-node-ports) {
+  padding: 4px var(--flow-node-padding);
+}
+
+/* Header loses top border-radius since input ports are above it */
+.flow--port-placement-vertical .flow-node-header {
+  border-radius: 0;
+}
+
+/* Input ports at the very top of the node */
+.flow--port-placement-vertical .flow-node-ports--input {
+  order: -1;
   flex-direction: row;
-  justify-content: center;
-  gap: 12px;
-}
-
-.flow--port-placement-vertical .flow-node-ports--output {
+  gap: 0;
+  padding: 0 0 4px;
   margin-left: 0;
 }
 
+/* Output ports at the very bottom of the node */
+.flow--port-placement-vertical .flow-node-ports--output {
+  order: 99;
+  flex-direction: row;
+  gap: 0;
+  padding: 4px 0 0;
+  margin-left: 0;
+}
+
+/* Port items fill width equally so positions match computed values */
 .flow--port-placement-vertical .flow-port {
+  flex: 1;
   flex-direction: column;
   align-items: center;
 }
@@ -514,32 +540,33 @@
   flex-direction: column-reverse;
 }
 
+/* Port dots centered horizontally, straddling the node border */
 .flow--port-placement-vertical .flow-port-dot {
   position: absolute;
-  top: auto;
   left: 50%;
-  transform: translateX(-50%);
+  right: auto;
 }
 
 .flow--port-placement-vertical .flow-port--input .flow-port-dot {
-  left: 50%;
-  top: calc(-1 * var(--flow-node-padding) - var(--flow-port-size) / 2 - 3px);
-  right: auto;
+  top: 0;
+  bottom: auto;
+  transform: translate(-50%, -50%);
 }
 
 .flow--port-placement-vertical .flow-port--output .flow-port-dot {
-  left: 50%;
-  bottom: calc(-1 * var(--flow-node-padding) - var(--flow-port-size) / 2 - 3px);
   top: auto;
-  right: auto;
+  bottom: 0;
+  transform: translate(-50%, 50%);
 }
 
-.flow--port-placement-vertical .flow-port:hover .flow-port-dot {
-  transform: translateX(-50%) scale(var(--flow-port-hover-scale));
+.flow--port-placement-vertical .flow-port--input:hover .flow-port-dot,
+.flow--port-placement-vertical .flow-port--input.flow-port--hovered .flow-port-dot {
+  transform: translate(-50%, -50%) scale(var(--flow-port-hover-scale));
 }
 
-.flow--port-placement-vertical .flow-port--hovered .flow-port-dot {
-  transform: translateX(-50%) scale(var(--flow-port-hover-scale));
+.flow--port-placement-vertical .flow-port--output:hover .flow-port-dot,
+.flow--port-placement-vertical .flow-port--output.flow-port--hovered .flow-port-dot {
+  transform: translate(-50%, 50%) scale(var(--flow-port-hover-scale));
 }
 
 .flow--port-placement-vertical .flow-port-label {

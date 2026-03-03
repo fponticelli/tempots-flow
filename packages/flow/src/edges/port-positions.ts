@@ -10,7 +10,6 @@ import type {
 const HEADER_HEIGHT = 32
 const PORT_VERTICAL_GAP = 24
 const PORT_FIRST_OFFSET = 16
-const PORT_HORIZONTAL_GAP = 24
 
 export function computePortPosition(
   nodePos: Position,
@@ -22,10 +21,9 @@ export function computePortPosition(
 ): ComputedPortPosition {
   if (portPlacement === 'vertical') {
     const side: PortSide = portDirection === 'input' ? 'top' : 'bottom'
-    const totalWidth = (totalPorts - 1) * PORT_HORIZONTAL_GAP
-    const startX = nodePos.x + nodeDims.width / 2 - totalWidth / 2
-    const x =
-      totalPorts === 1 ? nodePos.x + nodeDims.width / 2 : startX + portIndex * PORT_HORIZONTAL_GAP
+    // Each port item uses flex:1, so items divide the node width equally.
+    // Center of item i = (2*i + 1) / (2*N) * width
+    const x = nodePos.x + (nodeDims.width * (2 * portIndex + 1)) / (2 * totalPorts)
     const y = side === 'top' ? nodePos.y : nodePos.y + nodeDims.height
 
     return { x, y, side }
