@@ -3,7 +3,7 @@ import type { InteractionState } from '../types/interaction'
 import type { Position, Dimensions, PortSide, PortPlacement } from '../types/layout'
 import type { Graph, PortRef, PortDefinition } from '../types/graph'
 import type { FlowEvents } from '../types/events'
-import type { PortTypeConfig } from '../types/config'
+import type { PortTypeConfig, ConnectionConfig } from '../types/config'
 import { computePortPositionsForNode } from '../edges/port-positions'
 
 export function handleConnectionStart(
@@ -35,6 +35,7 @@ export function handleConnectionMove<N, E>(
   snapRadius: number,
   portTypeConfig?: PortTypeConfig,
   portPlacement: PortPlacement = 'horizontal',
+  connectionConfig?: ConnectionConfig,
 ): void {
   const connection = state.value.connection
   if (!connection) return
@@ -45,10 +46,13 @@ export function handleConnectionMove<N, E>(
   const sourcePortDef = sourceNode.ports.find((p) => p.id === connection.sourcePort.portId)
   if (!sourcePortDef) return
 
+  const looseMode = connectionConfig?.mode === 'loose'
+  const allowSelfConnection = connectionConfig?.selfConnection === true
+
   let bestTarget: { portRef: PortRef; x: number; y: number; distance: number } | null = null
 
   for (const node of graph.nodes) {
-    if (node.id === connection.sourcePort.nodeId) continue
+    if (!allowSelfConnection && node.id === connection.sourcePort.nodeId) continue
 
     const nodePos = positions.get(node.id)
     const nodeDims = dimensions.get(node.id)
@@ -57,7 +61,8 @@ export function handleConnectionMove<N, E>(
     const portPositions = computePortPositionsForNode(nodePos, nodeDims, node.ports, portPlacement)
 
     for (const port of node.ports) {
-      if (!isPortCompatible(sourcePortDef, port, graph, node.id, portTypeConfig)) continue
+      if (!isPortCompatible(sourcePortDef, port, graph, node.id, portTypeConfig, looseMode))
+        continue
 
       const portPos = portPositions.get(port.id)
       if (!portPos) continue
@@ -74,6 +79,13 @@ export function handleConnectionMove<N, E>(
           distance: dist,
         }
       }
+    }
+  }
+
+  // Apply custom validation
+  if (bestTarget && connectionConfig?.onValidate) {
+    if (!connectionConfig.onValidate(connection.sourcePort, bestTarget.portRef)) {
+      bestTarget = null
     }
   }
 
@@ -111,10 +123,12 @@ function isPortCompatible<N, E>(
   graph: Graph<N, E>,
   targetNodeId: string,
   portTypeConfig?: PortTypeConfig,
+  looseMode = false,
 ): boolean {
   if (targetPortDef.direction === sourcePortDef.direction) return false
 
-  if (!isTypeCompatible(sourcePortDef.type, targetPortDef.type, portTypeConfig)) return false
+  if (!looseMode && !isTypeCompatible(sourcePortDef.type, targetPortDef.type, portTypeConfig))
+    return false
 
   if (targetPortDef.maxConnections !== undefined) {
     const count = countPortConnections(graph, targetNodeId, targetPortDef.id)

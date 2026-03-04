@@ -35,4 +35,6 @@ export interface FlowEvents<N, E> {
   readonly onDelete: (nodeIds: ReadonlySet<string>, edgeIds: ReadonlySet<string>) => void
   readonly onCopy: (nodeIds: ReadonlySet<string>) => void
   readonly onPaste: (pastedNodeIds: readonly string[]) => void
+  readonly onEnterSubGraph: (compoundNodeId: string) => void
+  readonly onExitSubGraph: (compoundNodeId: string) => void
 }

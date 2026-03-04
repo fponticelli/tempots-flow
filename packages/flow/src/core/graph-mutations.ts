@@ -1,4 +1,4 @@
-import type { Graph, GraphNode, GraphEdge, PortRef } from '../types/graph'
+import type { Graph, GraphNode, GraphEdge, PortRef, PortMapping, SubGraph } from '../types/graph'
 
 export function addNode<N, E>(graph: Graph<N, E>, node: GraphNode<N>): Graph<N, E> {
   return { ...graph, nodes: [...graph.nodes, node] }
@@ -228,4 +228,107 @@ export function topologicalSort<N, E>(graph: Graph<N, E>): readonly string[] | n
   }
 
   return result.length === graph.nodes.length ? result : null
+}
+
+/**
+ * Collapse selected nodes into a compound node with a sub-graph.
+ * Internal edges become part of the inner graph.
+ * External edges are mapped to port mappings on the compound node.
+ */
+export function collapseToSubGraph<N, E>(
+  graph: Graph<N, E>,
+  nodeIds: ReadonlySet<string>,
+  compoundNode: GraphNode<N>,
+): Graph<N, E> {
+  const innerNodes = graph.nodes.filter((n) => nodeIds.has(n.id))
+  const innerEdges = graph.edges.filter(
+    (e) => nodeIds.has(e.source.nodeId) && nodeIds.has(e.target.nodeId),
+  )
+
+  // External edges: one endpoint inside, one outside
+  const externalEdges = graph.edges.filter(
+    (e) =>
+      (nodeIds.has(e.source.nodeId) && !nodeIds.has(e.target.nodeId)) ||
+      (!nodeIds.has(e.source.nodeId) && nodeIds.has(e.target.nodeId)),
+  )
+
+  // Build port mappings from external edges
+  const portMappings: PortMapping[] = []
+  for (const edge of externalEdges) {
+    if (nodeIds.has(edge.source.nodeId)) {
+      portMappings.push({
+        innerPortRef: edge.source,
+        outerPortId: edge.source.portId,
+      })
+    } else {
+      portMappings.push({
+        innerPortRef: edge.target,
+        outerPortId: edge.target.portId,
+      })
+    }
+  }
+
+  const innerGraph: Graph<N, E> = { nodes: innerNodes, edges: innerEdges }
+  const subGraph: SubGraph<N, E> = { innerGraph, portMappings }
+
+  // Replace external edge endpoints to reference the compound node
+  const remappedExternalEdges = externalEdges.map((edge) => {
+    if (nodeIds.has(edge.source.nodeId)) {
+      return { ...edge, source: { nodeId: compoundNode.id, portId: edge.source.portId } }
+    }
+    return { ...edge, target: { nodeId: compoundNode.id, portId: edge.target.portId } }
+  })
+
+  // Remaining edges (neither internal nor external)
+  const remainingEdges = graph.edges.filter(
+    (e) => !nodeIds.has(e.source.nodeId) && !nodeIds.has(e.target.nodeId),
+  )
+
+  const compoundWithSubGraph: GraphNode<N> = { ...compoundNode, subGraph }
+
+  return {
+    nodes: [...graph.nodes.filter((n) => !nodeIds.has(n.id)), compoundWithSubGraph],
+    edges: [...remainingEdges, ...remappedExternalEdges],
+  }
+}
+
+/**
+ * Expand a compound node's sub-graph back into the parent graph.
+ * Removes the compound node and restores its inner nodes and edges.
+ */
+export function expandSubGraph<N, E>(graph: Graph<N, E>, compoundNodeId: string): Graph<N, E> {
+  const compoundNode = graph.nodes.find((n) => n.id === compoundNodeId)
+  if (!compoundNode?.subGraph) return graph
+
+  const { innerGraph, portMappings } = compoundNode.subGraph as SubGraph<N, E>
+
+  // Build mapping from outer port to inner port for edge re-wiring
+  const outerToInner = new Map<string, PortRef>()
+  for (const mapping of portMappings) {
+    outerToInner.set(mapping.outerPortId, mapping.innerPortRef)
+  }
+
+  // Re-wire external edges: replace compound node references with inner ports
+  const rewiredEdges = graph.edges.filter(
+    (e) => e.source.nodeId !== compoundNodeId && e.target.nodeId !== compoundNodeId,
+  )
+
+  const externalEdges = graph.edges
+    .filter((e) => e.source.nodeId === compoundNodeId || e.target.nodeId === compoundNodeId)
+    .map((edge) => {
+      if (edge.source.nodeId === compoundNodeId) {
+        const inner = outerToInner.get(edge.source.portId)
+        if (inner) return { ...edge, source: inner }
+      }
+      if (edge.target.nodeId === compoundNodeId) {
+        const inner = outerToInner.get(edge.target.portId)
+        if (inner) return { ...edge, target: inner }
+      }
+      return edge
+    })
+
+  return {
+    nodes: [...graph.nodes.filter((n) => n.id !== compoundNodeId), ...innerGraph.nodes],
+    edges: [...rewiredEdges, ...externalEdges, ...innerGraph.edges],
+  }
 }

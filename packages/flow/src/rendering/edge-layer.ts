@@ -1,6 +1,7 @@
 import { svg, attr, svgAttr, on, Ensure, KeyedForEach, computedOf } from '@tempots/dom'
 import type { TNode } from '@tempots/dom'
 import type { Signal } from '@tempots/core'
+import { computed } from '@tempots/core'
 import type { Graph, GraphEdge } from '../types/graph'
 import type { ComputedEdgePath } from '../types/layout'
 import type {
@@ -27,6 +28,7 @@ export interface EdgeLayerOptions<N, E> {
   readonly onEdgeContextMenu?: (edge: GraphEdge<E>, event: PointerEvent) => void
   readonly edgeMarkers?: EdgeMarkerConfig
   readonly edgeLabels?: (edge: GraphEdge<E>) => EdgeLabelConfig | null
+  readonly visibleEdgeIds?: Signal<ReadonlySet<string>>
 }
 
 export function EdgeLayer<N, E>(
@@ -41,7 +43,15 @@ export function EdgeLayer<N, E>(
   onEdgeContextMenu?: (edge: GraphEdge<E>, event: PointerEvent) => void,
   edgeMarkers?: EdgeMarkerConfig,
   edgeLabels?: (edge: GraphEdge<E>) => EdgeLabelConfig | null,
+  visibleEdgeIds?: Signal<ReadonlySet<string>>,
 ): TNode {
+  const filteredEdgePaths = visibleEdgeIds
+    ? computed(
+        () => edgePaths.value.filter((ep) => visibleEdgeIds.value.has(ep.edgeId)),
+        [edgePaths, visibleEdgeIds],
+      )
+    : edgePaths
+
   return svg.svg(
     attr.class('flow-edge-layer'),
     attr.class(transitioning.map((t): string => (t ? 'flow-edge-layer--transitioning' : ''))),
@@ -49,7 +59,7 @@ export function EdgeLayer<N, E>(
     edgeMarkers ? createMarkerDefs(edgeMarkers) : null,
 
     KeyedForEach(
-      edgePaths,
+      filteredEdgePaths,
       (ep) => ep.edgeId,
       (edgePathSignal) => {
         const edgeId = edgePathSignal.$.edgeId

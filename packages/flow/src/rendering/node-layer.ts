@@ -1,6 +1,7 @@
 import { html, attr, KeyedForEach, computedOf } from '@tempots/dom'
 import type { TNode } from '@tempots/dom'
 import type { Signal } from '@tempots/core'
+import { computed } from '@tempots/core'
 import type { Graph, GraphNode, PortRef } from '../types/graph'
 import type { Position, Dimensions } from '../types/layout'
 import type { InteractionState } from '../types/interaction'
@@ -26,11 +27,19 @@ export function NodeLayer<N, E>(
   portRenderer?: PortRenderer,
   exitAnimation?: ExitAnimation,
   exitDuration?: number,
+  visibleNodeIds?: Signal<ReadonlySet<string>>,
 ): TNode {
-  const nodeItems = graph.map((g) => {
+  const allNodeItems = graph.map((g) => {
     const parentIds = getParentIds(g.nodes)
     return g.nodes.filter((n) => !parentIds.has(n.id)) as GraphNode<N>[]
   })
+
+  const nodeItems = visibleNodeIds
+    ? computed(
+        () => allNodeItems.value.filter((n) => visibleNodeIds.value.has(n.id)),
+        [allNodeItems, visibleNodeIds],
+      )
+    : allNodeItems
 
   const useExitAnimation =
     exitAnimation && exitAnimation !== 'none' && exitDuration && exitDuration > 0

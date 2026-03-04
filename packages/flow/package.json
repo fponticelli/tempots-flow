@@ -54,9 +54,10 @@
   },
   "devDependencies": {
     "@tempots/core": "^3.0.1",
+    "@vitest/coverage-v8": "^4.0.18",
     "jsdom": "^26.1.0",
     "tsup": "^8.4.0",
     "typescript": "^5.8.2",
-    "vitest": "^3.1.1"
+    "vitest": "^4.0.18"
   }
 }

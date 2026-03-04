@@ -2,7 +2,7 @@
 
 import type { Signal, Prop, Value } from '@tempots/core'
 import type { TNode, Renderable } from '@tempots/dom'
-import type { Graph, GraphNode, GraphEdge, PortDefinition } from './graph'
+import type { Graph, GraphNode, GraphEdge, PortDefinition, PortRef } from './graph'
 import type {
   Position,
   Dimensions,
@@ -12,6 +12,7 @@ import type {
   PortPlacement,
 } from './layout'
 import type { Diagnostic } from './validation'
+import type { Validator } from '../validators/index'
 import type { FlowEvents } from './events'
 import type { PartialAnimationConfig } from '../animation/animation-config'
 import type { FlowTheme } from './theme'
@@ -169,6 +170,63 @@ export interface PortTypeConfig {
   ) => boolean
 }
 
+// --- Keyboard config ---
+
+export type KeyboardAction =
+  | 'delete'
+  | 'selectAll'
+  | 'escape'
+  | 'undo'
+  | 'redo'
+  | 'copy'
+  | 'paste'
+  | 'cut'
+  | 'group'
+  | 'ungroup'
+  | 'zoomIn'
+  | 'zoomOut'
+  | 'fitView'
+  | 'home'
+  | 'end'
+  | 'cycleForward'
+  | 'cycleBackward'
+  | 'navigateUp'
+  | 'navigateDown'
+  | 'navigateLeft'
+  | 'navigateRight'
+
+export interface KeyboardConfig {
+  /** Custom key bindings. Keys are keyboard event descriptors (e.g. 'Delete', 'Ctrl+A'). */
+  readonly bindings?: Readonly<Record<string, KeyboardAction>>
+  /** Arrow navigation mode: 'graph' follows edges, 'spatial' uses proximity. Default: 'graph' */
+  readonly arrowMode?: 'spatial' | 'graph'
+}
+
+// --- Box selection config ---
+
+export interface BoxSelectionConfig {
+  /** Selection mode: 'intersect' selects on overlap, 'contain' requires full containment. Default: 'intersect' */
+  readonly mode?: 'intersect' | 'contain'
+  /** Whether to also select edges whose both endpoints are selected. Default: false */
+  readonly selectEdges?: boolean
+  /** Modifier key to initiate box selection. Default: 'shift' */
+  readonly modifier?: 'shift' | 'ctrl' | 'meta'
+}
+
+/** Behavior after node drag ends. */
+export type DragEndBehavior = 'pin' | 'relayout' | 'settle'
+
+// --- Connection config ---
+
+export interface ConnectionConfig {
+  /** Validation mode: 'strict' enforces port type checks, 'loose' bypasses them. Default: 'strict' */
+  readonly mode?: 'strict' | 'loose'
+  /** Whether to allow connections from a node back to itself. Default: false */
+  readonly selfConnection?: boolean
+  /** Custom validation callback invoked after built-in checks pass. */
+  readonly onValidate?: (source: PortRef, target: PortRef) => boolean
+}
+
 // --- Main config ---
 
 export interface FlowConfig<N, E> {
@@ -211,6 +269,9 @@ export interface FlowConfig<N, E> {
   // Connection
   readonly portTypes?: PortTypeConfig
   readonly connectionSnapRadius?: number
+  readonly connection?: ConnectionConfig
+  readonly boxSelection?: BoxSelectionConfig
+  readonly dragEndBehavior?: DragEndBehavior
 
   // Snap (low-level, prefer `grid` for unified snap + visual)
   readonly snapToGrid?: boolean
@@ -231,6 +292,7 @@ export interface FlowConfig<N, E> {
 
   // Keyboard & history
   readonly keyboardEnabled?: boolean
+  readonly keyboard?: KeyboardConfig | false
   readonly maxUndoHistory?: number
 
   // UI components
@@ -240,6 +302,12 @@ export interface FlowConfig<N, E> {
 
   // Theming
   readonly theme?: FlowTheme
+
+  // Viewport culling
+  readonly cullMargin?: number
+
+  // Validators (run reactively to produce diagnostics)
+  readonly validators?: readonly Validator<N, E>[]
 }
 
 // --- Flow instance ---
@@ -250,6 +318,18 @@ export interface FlowInstance<N, E> {
   readonly selectedNodeIds: Signal<ReadonlySet<string>>
   readonly selectedEdgeIds: Signal<ReadonlySet<string>>
   readonly edgePaths: Signal<ComputedEdgePath[]>
+
+  // Viewport culling
+  readonly visibleNodeIds: Signal<ReadonlySet<string>>
+  readonly visibleEdgeIds: Signal<ReadonlySet<string>>
+
+  // Per-node signals
+  getNodePosition(nodeId: string): Signal<Position>
+  getNodeDimensions(nodeId: string): Signal<Dimensions>
+  isNodeSelected(nodeId: string): Signal<boolean>
+
+  // Reactive diagnostics
+  readonly diagnostics: Signal<readonly Diagnostic[]>
 
   // Graph mutations
   updateGraph(updater: (graph: Graph<N, E>) => Graph<N, E>): void

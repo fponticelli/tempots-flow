@@ -192,4 +192,158 @@ describe('keyboard-handler', () => {
     handleKeyDown(keyEvent('Delete'), actions)
     expect(graphProp.value).toEqual(before)
   })
+
+  it('Ctrl+G groups selected nodes', () => {
+    const { graphProp, actions, setSelectedNodeIds } = setup()
+    const groupNode = {
+      id: 'group1',
+      data: 'group',
+      ports: [],
+      parentId: undefined,
+    }
+    ;(actions as unknown as Record<string, unknown>).createGroupNode = () => groupNode
+    setSelectedNodeIds(new Set(['a', 'b']))
+    handleKeyDown(keyEvent('g', { ctrlKey: true }), actions)
+    // After grouping, the group node should exist
+    expect(graphProp.value.nodes.find((n) => n.id === 'group1')).toBeDefined()
+  })
+
+  it('Ctrl+G does nothing with fewer than 2 selected nodes', () => {
+    const { graphProp, actions, setSelectedNodeIds } = setup()
+    ;(actions as unknown as Record<string, unknown>).createGroupNode = () => ({
+      id: 'group1',
+      data: 'group',
+      ports: [],
+    })
+    const before = graphProp.value
+    setSelectedNodeIds(new Set(['a']))
+    handleKeyDown(keyEvent('g', { ctrlKey: true }), actions)
+    expect(graphProp.value).toEqual(before)
+  })
+
+  it('Ctrl+Shift+G ungroups selected group node', () => {
+    const { graphProp, actions, setSelectedNodeIds } = setup()
+    // First group nodes a and b
+    const groupNode = {
+      id: 'group1',
+      data: 'group',
+      ports: [],
+      parentId: undefined,
+    }
+    ;(actions as unknown as Record<string, unknown>).createGroupNode = () => groupNode
+    setSelectedNodeIds(new Set(['a', 'b']))
+    handleKeyDown(keyEvent('g', { ctrlKey: true }), actions)
+    expect(graphProp.value.nodes.find((n) => n.id === 'group1')).toBeDefined()
+
+    // Now ungroup
+    setSelectedNodeIds(new Set(['group1']))
+    handleKeyDown(keyEvent('g', { ctrlKey: true, shiftKey: true }), actions)
+    expect(graphProp.value.nodes.find((n) => n.id === 'group1')).toBeUndefined()
+  })
+
+  it('+ calls zoomIn', () => {
+    let zoomed = false
+    const { actions } = setup()
+    ;(actions as unknown as Record<string, unknown>).zoomIn = () => {
+      zoomed = true
+    }
+    handleKeyDown(keyEvent('+'), actions)
+    expect(zoomed).toBe(true)
+  })
+
+  it('= calls zoomIn', () => {
+    let zoomed = false
+    const { actions } = setup()
+    ;(actions as unknown as Record<string, unknown>).zoomIn = () => {
+      zoomed = true
+    }
+    handleKeyDown(keyEvent('='), actions)
+    expect(zoomed).toBe(true)
+  })
+
+  it('- calls zoomOut', () => {
+    let zoomed = false
+    const { actions } = setup()
+    ;(actions as unknown as Record<string, unknown>).zoomOut = () => {
+      zoomed = true
+    }
+    handleKeyDown(keyEvent('-'), actions)
+    expect(zoomed).toBe(true)
+  })
+
+  it('0 calls fitView', () => {
+    let fitted = false
+    const { actions } = setup()
+    ;(actions as unknown as Record<string, unknown>).fitView = () => {
+      fitted = true
+    }
+    handleKeyDown(keyEvent('0'), actions)
+    expect(fitted).toBe(true)
+  })
+
+  it('Home selects first node', () => {
+    const { actions, getSelectedNodeIds } = setup()
+    handleKeyDown(keyEvent('Home'), actions)
+    expect(getSelectedNodeIds().size).toBe(1)
+  })
+
+  it('End selects last node', () => {
+    const { actions, getSelectedNodeIds } = setup()
+    handleKeyDown(keyEvent('End'), actions)
+    expect(getSelectedNodeIds().size).toBe(1)
+  })
+
+  it('Tab cycles to next node', () => {
+    const { actions, setSelectedNodeIds, getSelectedNodeIds } = setup()
+    setSelectedNodeIds(new Set(['a']))
+    handleKeyDown(keyEvent('Tab'), actions)
+    expect(getSelectedNodeIds().size).toBe(1)
+    const selected = [...getSelectedNodeIds()][0]
+    expect(selected).not.toBe('a')
+  })
+
+  it('Shift+Tab cycles backward', () => {
+    const { actions, setSelectedNodeIds, getSelectedNodeIds } = setup()
+    setSelectedNodeIds(new Set(['b']))
+    handleKeyDown(keyEvent('Tab', { shiftKey: true }), actions)
+    expect(getSelectedNodeIds().size).toBe(1)
+  })
+
+  it('Arrow keys navigate between nodes', () => {
+    const { actions, setSelectedNodeIds, getSelectedNodeIds } = setup()
+    setSelectedNodeIds(new Set(['a']))
+    handleKeyDown(keyEvent('ArrowRight'), actions)
+    expect(getSelectedNodeIds().size).toBe(1)
+  })
+
+  it('does not handle keys when input is focused', () => {
+    const { graphProp, actions, setSelectedNodeIds } = setup()
+    setSelectedNodeIds(new Set(['a']))
+    const before = graphProp.value
+    const event = new KeyboardEvent('keydown', { key: 'Delete', bubbles: true })
+    Object.defineProperty(event, 'target', {
+      value: { tagName: 'INPUT', isContentEditable: false },
+    })
+    handleKeyDown(event, actions)
+    expect(graphProp.value).toEqual(before)
+  })
+
+  it('does not handle keys when textarea is focused', () => {
+    const { graphProp, actions, setSelectedNodeIds } = setup()
+    setSelectedNodeIds(new Set(['a']))
+    const before = graphProp.value
+    const event = new KeyboardEvent('keydown', { key: 'Delete', bubbles: true })
+    Object.defineProperty(event, 'target', {
+      value: { tagName: 'TEXTAREA', isContentEditable: false },
+    })
+    handleKeyDown(event, actions)
+    expect(graphProp.value).toEqual(before)
+  })
+
+  it('Ctrl+X does nothing when no nodes selected', () => {
+    const { graphProp, actions } = setup()
+    const before = graphProp.value
+    handleKeyDown(keyEvent('x', { ctrlKey: true }), actions)
+    expect(graphProp.value).toEqual(before)
+  })
 })

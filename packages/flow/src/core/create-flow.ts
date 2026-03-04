@@ -1,5 +1,7 @@
-import { prop } from '@tempots/core'
-import type { Viewport, Dimensions, PortPlacement } from '../types/layout'
+import { prop, computed } from '@tempots/core'
+import type { Signal } from '@tempots/core'
+import type { Viewport, Dimensions, Position, PortPlacement } from '../types/layout'
+import type { Diagnostic } from '../types/validation'
 import type { FlowConfig, FlowInstance, BackgroundType } from '../types/config'
 import { createLayoutEngine } from '../layout/layout-engine'
 import { createEdgePathsSignal } from '../edges/compute-edge-paths'
@@ -15,6 +17,7 @@ import { resolveAnimationConfig } from '../animation/animation-config'
 import { createViewportTween } from '../animation/viewport-tween'
 import { createReducedMotionSignal } from '../animation/reduced-motion'
 import { createTouchHandler } from '../interaction/touch-handler'
+import { computeVisibleNodeIds, computeVisibleEdgeIds } from './viewport-culling'
 
 const DEFAULT_VIEWPORT: Viewport = { x: 0, y: 0, zoom: 1 }
 
@@ -105,14 +108,50 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     portPlacementProp,
   )
 
-  // --- Viewport tween ---
-  const viewportTween = createViewportTween(viewportProp, animationConfig.viewport, reducedMotion)
-
   // --- Container rect ---
+  const containerMounted = prop(0)
   let getContainerRect: () => DOMRect = () => new DOMRect(0, 0, 0, 0)
   function setContainerRect(getter: () => DOMRect) {
     getContainerRect = getter
+    containerMounted.set(containerMounted.value + 1)
   }
+
+  // --- Viewport culling ---
+  const cullMargin = config.cullMargin ?? 100
+  const visibleNodeIds = computed(() => {
+    const rect = getContainerRect()
+    return computeVisibleNodeIds(
+      viewportProp.value,
+      rect.width,
+      rect.height,
+      layoutEngine.positions.value,
+      layoutEngine.dimensions.value,
+      cullMargin,
+    )
+  }, [viewportProp, layoutEngine.positions, layoutEngine.dimensions, containerMounted])
+  const visibleEdgeIds = computed(
+    () => computeVisibleEdgeIds(visibleNodeIds.value, graphProp.value.edges),
+    [visibleNodeIds, graphProp],
+  )
+
+  // --- Per-node signal caches ---
+  const nodePositionCache = new Map<string, Signal<Position>>()
+  const nodeDimensionsCache = new Map<string, Signal<Dimensions>>()
+  const nodeSelectedCache = new Map<string, Signal<boolean>>()
+
+  const DEFAULT_POS: Position = { x: 0, y: 0 }
+  const DEFAULT_DIMS: Dimensions = { width: 180, height: 80 }
+
+  // --- Reactive diagnostics ---
+  const EMPTY_DIAGNOSTICS: readonly Diagnostic[] = []
+  const diagnostics = computed<readonly Diagnostic[]>(() => {
+    if (!config.validators?.length) return EMPTY_DIAGNOSTICS
+    const g = graphProp.value
+    return config.validators.flatMap((v) => v(g))
+  }, [graphProp])
+
+  // --- Viewport tween ---
+  const viewportTween = createViewportTween(viewportProp, animationConfig.viewport, reducedMotion)
 
   // --- History manager ---
   const historyManager = createHistoryManager(
@@ -134,6 +173,10 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
       positions: ReadonlyMap<string, { x: number; y: number }>,
     ) => {
       historyManager.record()
+      if (config.dragEndBehavior === 'relayout' && config.layout) {
+        layoutEngine.setAlgorithm(config.layout)
+        triggerLayoutTransition()
+      }
       originalDragEnd?.(nodeIds, positions)
     },
   }
@@ -500,6 +543,8 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
       ? animationConfig.enterExit.duration
       : undefined,
     alignmentGuidesEnabled: config.alignmentGuides,
+    visibleNodeIds,
+    visibleEdgeIds,
   })
 
   // --- Instance API ---
@@ -509,6 +554,37 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     selectedNodeIds,
     selectedEdgeIds,
     edgePaths,
+    visibleNodeIds,
+    visibleEdgeIds,
+
+    getNodePosition(nodeId: string): Signal<Position> {
+      let sig = nodePositionCache.get(nodeId)
+      if (!sig) {
+        sig = layoutEngine.positions.map((p) => p.get(nodeId) ?? DEFAULT_POS)
+        nodePositionCache.set(nodeId, sig)
+      }
+      return sig
+    },
+
+    getNodeDimensions(nodeId: string): Signal<Dimensions> {
+      let sig = nodeDimensionsCache.get(nodeId)
+      if (!sig) {
+        sig = layoutEngine.dimensions.map((d) => d.get(nodeId) ?? DEFAULT_DIMS)
+        nodeDimensionsCache.set(nodeId, sig)
+      }
+      return sig
+    },
+
+    isNodeSelected(nodeId: string): Signal<boolean> {
+      let sig = nodeSelectedCache.get(nodeId)
+      if (!sig) {
+        sig = selectedNodeIds.map((s) => s.has(nodeId))
+        nodeSelectedCache.set(nodeId, sig)
+      }
+      return sig
+    },
+
+    diagnostics,
 
     updateGraph,
 

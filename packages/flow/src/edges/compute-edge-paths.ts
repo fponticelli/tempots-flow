@@ -75,9 +75,11 @@ export function createEdgePathsSignal<N, E>(
     }
 
     return edgeData.map(({ edge, sourcePoint, targetPoint }): ComputedEdgePath => {
-      const d =
-        pathMap?.get(edge.id) ??
-        routingStrategy.computePath({ source: sourcePoint, target: targetPoint })
+      // Per-edge routing override takes precedence
+      const d = edge.routing
+        ? edge.routing.computePath({ source: sourcePoint, target: targetPoint })
+        : (pathMap?.get(edge.id) ??
+          routingStrategy.computePath({ source: sourcePoint, target: targetPoint }))
 
       return {
         edgeId: edge.id,

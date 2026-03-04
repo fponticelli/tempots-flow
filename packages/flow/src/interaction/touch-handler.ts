@@ -6,6 +6,10 @@ export interface TouchConfig {
   readonly minZoom: number
   readonly maxZoom: number
   readonly onZoom?: (zoom: number) => void
+  /** Long-press duration in ms. Default: 500 */
+  readonly longPressDuration?: number
+  /** Move threshold in px to cancel long press. Default: 10 */
+  readonly longPressMoveThreshold?: number
 }
 
 interface TouchState {
@@ -43,9 +47,22 @@ export function createTouchHandler(
   onTouchEnd: (e: TouchEvent) => void
 } {
   let touchState: TouchState | null = null
+  let longPressTimer: ReturnType<typeof setTimeout> | null = null
+  let longPressStartX = 0
+  let longPressStartY = 0
+  const longPressDuration = config.longPressDuration ?? 500
+  const longPressMoveThreshold = config.longPressMoveThreshold ?? 10
+
+  function cancelLongPress() {
+    if (longPressTimer !== null) {
+      clearTimeout(longPressTimer)
+      longPressTimer = null
+    }
+  }
 
   function onTouchStart(e: TouchEvent): void {
     if (e.touches.length === 2) {
+      cancelLongPress()
       e.preventDefault()
       const t1 = e.touches[0]!
       const t2 = e.touches[1]!
@@ -57,10 +74,37 @@ export function createTouchHandler(
         startViewport: { ...viewportProp.value },
         active: true,
       }
+    } else if (e.touches.length === 1) {
+      // Start long-press timer for single touch
+      const touch = e.touches[0]!
+      longPressStartX = touch.clientX
+      longPressStartY = touch.clientY
+      const target = e.target as Element
+      longPressTimer = setTimeout(() => {
+        longPressTimer = null
+        // Dispatch synthetic contextmenu event
+        const event = new MouseEvent('contextmenu', {
+          bubbles: true,
+          cancelable: true,
+          clientX: longPressStartX,
+          clientY: longPressStartY,
+        })
+        target.dispatchEvent(event)
+      }, longPressDuration)
     }
   }
 
   function onTouchMove(e: TouchEvent): void {
+    // Cancel long press if finger moved beyond threshold
+    if (longPressTimer !== null && e.touches.length === 1) {
+      const touch = e.touches[0]!
+      const dx = touch.clientX - longPressStartX
+      const dy = touch.clientY - longPressStartY
+      if (Math.sqrt(dx * dx + dy * dy) > longPressMoveThreshold) {
+        cancelLongPress()
+      }
+    }
+
     if (!touchState?.active || e.touches.length !== 2) return
     e.preventDefault()
 
@@ -91,6 +135,7 @@ export function createTouchHandler(
   }
 
   function onTouchEnd(e: TouchEvent): void {
+    cancelLongPress()
     if (e.touches.length < 2) {
       touchState = null
     }

@@ -227,6 +227,64 @@ describe('acyclic', () => {
     const diagnostics = acyclic()(graph)
     expect(diagnostics).toHaveLength(0)
   })
+
+  it('detects cycles via backward edges', () => {
+    const graph: Graph<string, string> = {
+      nodes: [
+        { id: 'a', data: '', ports: [] },
+        { id: 'b', data: '', ports: [] },
+        { id: 'c', data: '', ports: [] },
+      ],
+      edges: [
+        {
+          id: 'e1',
+          data: '',
+          source: { nodeId: 'b', portId: 'out' },
+          target: { nodeId: 'a', portId: 'in' },
+          direction: 'backward',
+        },
+        {
+          id: 'e2',
+          data: '',
+          source: { nodeId: 'c', portId: 'out' },
+          target: { nodeId: 'b', portId: 'in' },
+          direction: 'backward',
+        },
+        {
+          id: 'e3',
+          data: '',
+          source: { nodeId: 'a', portId: 'out' },
+          target: { nodeId: 'c', portId: 'in' },
+          direction: 'backward',
+        },
+      ],
+    }
+    const diagnostics = acyclic()(graph)
+    expect(diagnostics).toHaveLength(1)
+    expect(diagnostics[0]?.severity).toBe('error')
+  })
+
+  it('detects cycles via bidirectional edges', () => {
+    const graph: Graph<string, string> = {
+      nodes: [
+        { id: 'a', data: '', ports: [] },
+        { id: 'b', data: '', ports: [] },
+      ],
+      edges: [
+        {
+          id: 'e1',
+          data: '',
+          source: { nodeId: 'a', portId: 'out' },
+          target: { nodeId: 'b', portId: 'in' },
+          direction: 'bidirectional',
+        },
+      ],
+    }
+    const diagnostics = acyclic()(graph)
+    // Bidirectional creates edges in both directions: a→b and b→a, forming a cycle
+    expect(diagnostics).toHaveLength(1)
+    expect(diagnostics[0]?.severity).toBe('error')
+  })
 })
 
 describe('compose', () => {

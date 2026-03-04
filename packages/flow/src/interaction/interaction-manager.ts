@@ -39,6 +39,8 @@ export interface InteractionManager {
   handlePointerMove(event: PointerEvent): void
   handlePointerUp(event: PointerEvent): void
   handleWheel(event: WheelEvent): void
+  handleKeyDown(event: KeyboardEvent): void
+  handleKeyUp(event: KeyboardEvent): void
 }
 
 export function createInteractionManager<N, E>(
@@ -55,6 +57,7 @@ export function createInteractionManager<N, E>(
   const state = prop(createInitialInteractionState())
   const alignmentGuidesProp = prop<readonly AlignmentGuide[]>([])
   const isDragging = state.map((s) => s.mode === 'dragging-nodes')
+  let spaceHeld = false
 
   const multiKey = config.multiSelectionKey ?? 'shift'
 
@@ -66,6 +69,19 @@ export function createInteractionManager<N, E>(
   const dragConfig: DragConfig = {
     alignmentGuides: config.alignmentGuides,
     dragBounds: config.dragBounds,
+  }
+
+  const boxSelectModifier = config.boxSelection?.modifier ?? 'shift'
+
+  function isBoxSelectModifier(event: PointerEvent | MouseEvent): boolean {
+    switch (boxSelectModifier) {
+      case 'shift':
+        return event.shiftKey
+      case 'meta':
+        return event.metaKey
+      case 'ctrl':
+        return event.ctrlKey
+    }
   }
 
   function isMultiSelect(event: PointerEvent | MouseEvent): boolean {
@@ -90,7 +106,7 @@ export function createInteractionManager<N, E>(
 
     handlePointerDown(event: PointerEvent, target: InteractionTarget) {
       if (target.type === 'viewport') {
-        if (event.shiftKey) {
+        if (isBoxSelectModifier(event)) {
           handleBoxSelectStart(state, graphPos(event))
         } else if (config.panEnabled !== false) {
           handlePanStart(state, event)
@@ -99,6 +115,11 @@ export function createInteractionManager<N, E>(
       }
 
       if (target.type === 'node') {
+        // Space-bar pan: treat node click as viewport pan
+        if (spaceHeld && config.panEnabled !== false) {
+          handlePanStart(state, event)
+          return
+        }
         if (config.nodesSelectable !== false) {
           handleNodeClick(state, target.nodeId, isMultiSelect(event))
         }
@@ -192,6 +213,7 @@ export function createInteractionManager<N, E>(
           config.connectionSnapRadius ?? 20,
           config.portTypes,
           portPlacement.value,
+          config.connection,
         )
         const conn = state.value.connection
         if (conn) {
@@ -231,7 +253,13 @@ export function createInteractionManager<N, E>(
       }
 
       if (mode === 'box-selecting') {
-        handleBoxSelectEnd(state, positions.value, dimensions.value)
+        handleBoxSelectEnd(
+          state,
+          positions.value,
+          dimensions.value,
+          config.boxSelection,
+          graphSignal.value.edges,
+        )
         return
       }
     },
@@ -249,6 +277,18 @@ export function createInteractionManager<N, E>(
           },
           config.events?.onZoom,
         )
+      }
+    },
+
+    handleKeyDown(event: KeyboardEvent) {
+      if (event.code === 'Space') {
+        spaceHeld = true
+      }
+    },
+
+    handleKeyUp(event: KeyboardEvent) {
+      if (event.code === 'Space') {
+        spaceHeld = false
       }
     },
   }

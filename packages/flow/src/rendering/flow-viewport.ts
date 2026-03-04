@@ -79,6 +79,8 @@ export interface FlowViewportOptions<N, E> {
   readonly exitAnimation?: ExitAnimation
   readonly exitDuration?: number
   readonly alignmentGuidesEnabled?: boolean
+  readonly visibleNodeIds?: Signal<ReadonlySet<string>>
+  readonly visibleEdgeIds?: Signal<ReadonlySet<string>>
 }
 
 export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderable {
@@ -175,7 +177,12 @@ export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderab
     }),
 
     on.keydown((e: KeyboardEvent) => {
+      interactionManager.handleKeyDown(e)
       options.onKeyDown?.(e)
+    }),
+
+    on.keyup((e: KeyboardEvent) => {
+      interactionManager.handleKeyUp(e)
     }),
 
     on.pointermove((e: PointerEvent) => {
@@ -227,6 +234,7 @@ export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderab
         options.onEdgeContextMenu,
         options.edgeMarkers,
         options.edgeLabels,
+        options.visibleEdgeIds,
       ),
       GroupLayer(graph, positions, dimensions, interactionState, handleInteraction, transitioning),
       NodeLayer(
@@ -242,6 +250,7 @@ export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderab
         options.portRenderer,
         options.exitAnimation,
         options.exitDuration,
+        options.visibleNodeIds,
       ),
       ConnectionPreview(interactionState, edgeRouting),
       SelectionBox(interactionState),

@@ -21,6 +21,8 @@ export {
   outgoingNodes,
   incomingNodes,
   topologicalSort,
+  collapseToSubGraph,
+  expandSubGraph,
 } from './core/graph-mutations'
 
 // Serialization
@@ -44,15 +46,21 @@ export {
 // Coordinate utilities
 export { screenToGraph, graphToScreen, clampZoom, snapToGrid } from './core/coordinate-utils'
 
+// Viewport culling
+export { computeVisibleNodeIds, computeVisibleEdgeIds } from './core/viewport-culling'
+
 // Types
 export type {
   PortDirection,
   PortDefinition,
   PortRef,
   EdgeDirection,
+  EdgeRoutingLike,
   GraphNode,
   GraphEdge,
   Graph,
+  PortMapping,
+  SubGraph,
 } from './types/graph'
 
 export type {
@@ -97,6 +105,11 @@ export type {
   EdgeMarkerType,
   EdgeMarkerConfig,
   EdgeLabelConfig,
+  ConnectionConfig,
+  BoxSelectionConfig,
+  DragEndBehavior,
+  KeyboardAction,
+  KeyboardConfig,
   FlowConfig,
   FlowInstance,
 } from './types/config'
@@ -109,7 +122,7 @@ export type { ClipboardManager, ClipboardContents } from './core/clipboard-manag
 
 // Animation
 export type { EasingFunction } from './animation/easing'
-export { easing } from './animation/easing'
+export { easing, springEasing } from './animation/easing'
 export type {
   LayoutTransitionConfig,
   ViewportTransitionConfig,

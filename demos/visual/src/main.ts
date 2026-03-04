@@ -1,8 +1,25 @@
-import { render, html, svg, attr, svgAttr, style, on, computedOf, ForEach } from '@tempots/dom'
+import {
+  render,
+  html,
+  svg,
+  attr,
+  svgAttr,
+  style,
+  on,
+  computedOf,
+  ForEach,
+  Ensure,
+} from '@tempots/dom'
 import type { TNode } from '@tempots/dom'
 import type { Signal } from '@tempots/core'
 import { prop, type Prop } from '@tempots/core'
-import { createFlow, createEdgeOverlay, EdgeFlowParticle } from '@tempots/flow'
+import {
+  createFlow,
+  createEdgeOverlay,
+  EdgeFlowParticle,
+  collapseToSubGraph,
+  expandSubGraph,
+} from '@tempots/flow'
 import type {
   Graph,
   GraphNode,
@@ -19,6 +36,7 @@ import type {
   PortRenderer,
   PortRenderContext,
 } from '@tempots/flow'
+import { portTypeCheck, requiredPorts } from '@tempots/flow/validators'
 import {
   hierarchicalLayout,
   gridLayout,
@@ -908,6 +926,8 @@ const routingStrategies: Record<string, EdgeRoutingStrategy> = {
 
 // --- Create flow instance ---
 
+const sourcesCollapsed: Prop<boolean> = prop(false)
+
 const flow = createFlow<VisualNodeData, VisualEdgeData>({
   graph: graphProp,
   nodeRenderer: visualNodeRenderer,
@@ -921,6 +941,9 @@ const flow = createFlow<VisualNodeData, VisualEdgeData>({
   minimap: { position: 'bottom-right', width: 200, height: 150 },
   alignmentGuides: true,
   panInertia: true,
+  cullMargin: 100,
+  connection: { mode: 'strict', selfConnection: false },
+  validators: [portTypeCheck(), requiredPorts()],
   theme: {
     portTypeStyles: {
       float: { color: '#f0a500' },
@@ -954,11 +977,94 @@ function ToolbarButton(label: TNode, isActive: Signal<boolean>, onClick: () => v
   )
 }
 
+function ActionButton(label: TNode, onClick: () => void): TNode {
+  return html.button(
+    label,
+    style.padding('6px 12px'),
+    style.cursor('pointer'),
+    style.border('1px solid rgba(255,255,255,0.15)'),
+    style.borderRadius('4px'),
+    style.background('rgba(255,255,255,0.05)'),
+    style.color('rgba(255,255,255,0.6)'),
+    on.click(onClick),
+  )
+}
+
 function Separator(): TNode {
   return html.span(
     style.width('1px'),
     style.background('rgba(255,255,255,0.15)'),
     style.alignSelf('stretch'),
+  )
+}
+
+// --- Sub-graph collapse/expand ---
+
+const sourceNodeIds = new Set(['number', 'colorpicker', 'texture', 'uv'])
+
+function collapseSourceNodes() {
+  const compoundNode: GraphNode<VisualNodeData> = {
+    id: 'sources-group',
+    data: { label: 'Sources', type: 'source' },
+    ports: [
+      { id: 'out', direction: 'output', label: 'Value', type: 'float' },
+      { id: 'color_out', direction: 'output', label: 'Color', type: 'color' },
+      { id: 'alpha_out', direction: 'output', label: 'Alpha', type: 'float' },
+      { id: 'uv_out', direction: 'output', label: 'UV', type: 'vec2' },
+    ],
+  }
+  graphProp.update((g) => collapseToSubGraph(g, sourceNodeIds, compoundNode))
+  sourcesCollapsed.set(true)
+}
+
+function expandSourceNodes() {
+  graphProp.update((g) => expandSubGraph(g, 'sources-group'))
+  sourcesCollapsed.set(false)
+}
+
+// --- Per-node signal info ---
+
+function NodeInfoPanel(): TNode {
+  const firstSelectedId = flow.selectedNodeIds.map((ids): string | null => {
+    const arr = [...ids]
+    return arr.length > 0 ? arr[0] : null
+  })
+
+  // Reactively derive position/dimension text from edgePaths (which updates on position changes)
+  const posText = computedOf(
+    firstSelectedId,
+    flow.edgePaths,
+  )((id): string => {
+    if (id === null) return ''
+    const p = flow.getNodePosition(id).value
+    return `(${Math.round(p.x)}, ${Math.round(p.y)})`
+  })
+
+  const dimsText = computedOf(
+    firstSelectedId,
+    flow.edgePaths,
+  )((id): string => {
+    if (id === null) return ''
+    const d = flow.getNodeDimensions(id).value
+    return `${Math.round(d.width)} x ${Math.round(d.height)}`
+  })
+
+  return Ensure(firstSelectedId, (selectedId) =>
+    html.div(
+      style.position('absolute'),
+      style.top('8px'),
+      style.left('8px'),
+      style.padding('8px 12px'),
+      style.borderRadius('6px'),
+      style.background('rgba(0,0,0,0.7)'),
+      style.fontSize('0.75em'),
+      style.color('rgba(255,255,255,0.6)'),
+      style.pointerEvents('none'),
+      style.lineHeight('1.6'),
+      html.div(html.strong(style.color('rgba(255,255,255,0.8)'), 'Node: '), selectedId),
+      html.div('Pos: ', posText),
+      html.div('Size: ', dimsText),
+    ),
   )
 }
 
@@ -1046,6 +1152,43 @@ render(
 
       Separator(),
 
+      // Sub-graph collapse/expand
+      ActionButton(
+        sourcesCollapsed.map((c): string => (c ? 'Expand Sources' : 'Collapse Sources')),
+        () => {
+          if (sourcesCollapsed.value) expandSourceNodes()
+          else collapseSourceNodes()
+        },
+      ),
+
+      Separator(),
+
+      // Viewport controls
+      ActionButton('Fit View', () => flow.fitView(40)),
+      ActionButton('Center on Output', () => flow.centerOnNode('output', 1, true)),
+
+      Separator(),
+
+      // Diagnostics badge
+      html.span(
+        style.fontSize('0.75em'),
+        style.padding('4px 8px'),
+        style.borderRadius('4px'),
+        style.background(
+          flow.diagnostics.map((d): string =>
+            d.length > 0 ? 'rgba(255, 180, 50, 0.2)' : 'rgba(100, 255, 100, 0.1)',
+          ),
+        ),
+        style.color(
+          flow.diagnostics.map((d): string =>
+            d.length > 0 ? 'rgba(255, 180, 50, 0.9)' : 'rgba(100, 255, 100, 0.7)',
+          ),
+        ),
+        flow.diagnostics.map((d): string => (d.length > 0 ? `${d.length} warning(s)` : 'Valid')),
+      ),
+
+      Separator(),
+
       html.span(
         style.fontSize('0.75em'),
         style.color('rgba(255,255,255,0.4)'),
@@ -1059,7 +1202,15 @@ render(
       ),
     ),
 
-    html.div(style.flex('1'), style.position('relative'), flow.renderable),
+    html.div(
+      style.flex('1'),
+      style.position('relative'),
+
+      flow.renderable,
+
+      // Per-node info panel (shows when a node is selected)
+      NodeInfoPanel(),
+    ),
   ),
   '#app',
 )
