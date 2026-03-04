@@ -326,6 +326,36 @@
   dominant-baseline: central;
 }
 
+.flow-hidden {
+  display: none;
+}
+
+/* Edge labels */
+.flow-edge-label-group {
+  pointer-events: none;
+}
+
+.flow-edge-label {
+  fill: var(--flow-node-color, rgba(255, 255, 255, 0.9));
+  font-size: 0.75em;
+}
+
+.flow-edge-label-bg {
+  fill: var(--flow-viewport-bg, #1a1a2e);
+  stroke: var(--flow-edge-color, #53a8ff);
+  stroke-width: 1;
+  opacity: 0.9;
+}
+
+/* Edge markers */
+.flow-edge-layer marker path {
+  fill: var(--flow-edge-color, #53a8ff);
+}
+
+.flow-edge--selected marker path {
+  fill: var(--flow-edge-selected-color, #ffffff);
+}
+
 /* Connection preview layer */
 .flow-connection-preview-layer {
   position: absolute;
@@ -451,6 +481,25 @@
 .flow-controls-button:hover {
   background: rgba(0, 0, 0, 0.7);
   color: #ffffff;
+}
+
+.flow-controls-button--active {
+  background: rgba(83, 168, 255, 0.3);
+  border-color: var(--flow-selection-border);
+  color: #ffffff;
+}
+
+/* Locked viewport */
+.flow-viewport--locked {
+  cursor: not-allowed;
+}
+
+.flow-viewport--locked .flow-node-wrapper {
+  cursor: default;
+}
+
+.flow-viewport--locked .flow-node-wrapper:active {
+  cursor: default;
 }
 
 /* Minimap */
@@ -637,6 +686,101 @@
 .flow-edge--flowing .flow-edge {
   stroke-dasharray: 8 4;
   animation: flow-edge-dash var(--flow-edge-flow-speed) linear infinite;
+}
+
+/* Edge flow pulse animation */
+@keyframes flow-edge-pulse {
+  to {
+    stroke-dashoffset: -40;
+  }
+}
+
+.flow-edge-flow-pulse {
+  pointer-events: none;
+}
+
+/* Edge flow particles */
+.flow-edge-flow-particles {
+  pointer-events: none;
+}
+
+/* ---- Exit Animations ---- */
+
+@keyframes flow-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes flow-scale-out {
+  to {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+}
+
+@keyframes flow-fade-scale-out {
+  to {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+
+@keyframes flow-collapse-out {
+  to {
+    opacity: 0;
+    transform: scaleY(0);
+    max-height: 0;
+  }
+}
+
+.flow--exit-fade .flow-node--exiting .flow-node {
+  animation: flow-fade-out var(--flow-enter-duration) var(--flow-transition-easing) both;
+}
+
+.flow--exit-scale .flow-node--exiting .flow-node {
+  animation: flow-scale-out var(--flow-enter-duration) var(--flow-transition-easing) both;
+}
+
+.flow--exit-fade-scale .flow-node--exiting .flow-node {
+  animation: flow-fade-scale-out var(--flow-enter-duration) var(--flow-transition-easing) both;
+}
+
+.flow--exit-collapse .flow-node--exiting .flow-node {
+  animation: flow-collapse-out var(--flow-enter-duration) var(--flow-transition-easing) both;
+}
+
+/* ---- Alignment Guides ---- */
+
+.flow-alignment-guides-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.flow-alignment-guide {
+  position: absolute;
+  background: var(--flow-alignment-guide-color, rgba(255, 100, 100, 0.6));
+}
+
+.flow-alignment-guide--horizontal {
+  height: 1px;
+  background: repeating-linear-gradient(
+    to right,
+    var(--flow-alignment-guide-color, rgba(255, 100, 100, 0.6)) 0 4px,
+    transparent 4px 8px
+  );
+}
+
+.flow-alignment-guide--vertical {
+  width: 1px;
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--flow-alignment-guide-color, rgba(255, 100, 100, 0.6)) 0 4px,
+    transparent 4px 8px
+  );
 }
 
 /* ---- Reduced Motion ---- */

@@ -17,6 +17,8 @@ export interface OverlayLayerOptions {
   readonly zoomIn: () => void
   readonly zoomOut: () => void
   readonly fitView: () => void
+  readonly interactionLocked?: Signal<boolean>
+  readonly toggleLock?: () => void
 }
 
 export function OverlayLayer(options: OverlayLayerOptions): TNode {
@@ -24,7 +26,14 @@ export function OverlayLayer(options: OverlayLayerOptions): TNode {
     attr.class('flow-ui-layer'),
 
     options.controls !== false
-      ? Controls(options.controls ?? {}, options.zoomIn, options.zoomOut, options.fitView)
+      ? Controls(
+          options.controls ?? {},
+          options.zoomIn,
+          options.zoomOut,
+          options.fitView,
+          options.interactionLocked,
+          options.toggleLock,
+        )
       : null,
 
     options.minimap !== false

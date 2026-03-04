@@ -14,6 +14,7 @@ import { removeNodes, removeEdges } from './graph-mutations'
 import { resolveAnimationConfig } from '../animation/animation-config'
 import { createViewportTween } from '../animation/viewport-tween'
 import { createReducedMotionSignal } from '../animation/reduced-motion'
+import { createTouchHandler } from '../interaction/touch-handler'
 
 const DEFAULT_VIEWPORT: Viewport = { x: 0, y: 0, zoom: 1 }
 
@@ -70,6 +71,7 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
   // --- Animation config ---
   const animationConfig = resolveAnimationConfig(config.animation, config.layoutTransitionDuration)
   const reducedMotion = createReducedMotionSignal()
+  // Snapshot at creation time — reduced motion preference is not reactive after init
   const effectivelyDisabled =
     !animationConfig.enabled || (animationConfig.respectReducedMotion && reducedMotion.value)
 
@@ -327,11 +329,116 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
       onDelete: config.events?.onDelete,
       onCopy: config.events?.onCopy,
       onPaste: config.events?.onPaste,
+      zoomIn,
+      zoomOut,
+      fitView,
     })
+  }
+
+  // --- Interaction lock ---
+  const interactionLockedProp = prop(false)
+  const interactionLocked = interactionLockedProp.map((v) => v)
+
+  function setInteractionLocked(locked: boolean) {
+    interactionLockedProp.set(locked)
+  }
+
+  function toggleLock() {
+    interactionLockedProp.update((v) => !v)
+  }
+
+  // --- Viewport navigation helpers ---
+  function panTo(position: { x: number; y: number }, animate = true) {
+    const rect = getContainerRect()
+    const current = viewportProp.value
+    const target: Viewport = {
+      x: rect.width / 2 - position.x * current.zoom,
+      y: rect.height / 2 - position.y * current.zoom,
+      zoom: current.zoom,
+    }
+    if (animate) {
+      viewportTween.tweenTo(target)
+    } else {
+      viewportProp.set(target)
+    }
+  }
+
+  function centerOnNode(nodeId: string, zoom?: number, animate = true) {
+    const pos = layoutEngine.positions.value.get(nodeId)
+    if (!pos) return
+    const dims = layoutEngine.dimensions.value.get(nodeId) ?? { width: 180, height: 80 }
+    const centerX = pos.x + dims.width / 2
+    const centerY = pos.y + dims.height / 2
+    const rect = getContainerRect()
+    const z = zoom ?? viewportProp.value.zoom
+    const target: Viewport = {
+      x: rect.width / 2 - centerX * z,
+      y: rect.height / 2 - centerY * z,
+      zoom: z,
+    }
+    if (animate) {
+      viewportTween.tweenTo(target)
+    } else {
+      viewportProp.set(target)
+    }
+  }
+
+  function centerOnSelection(padding = 50, animate = true) {
+    const selected = selectedNodeIds.value
+    if (selected.size === 0) return
+    const positions = layoutEngine.positions.value
+    const dimensions = layoutEngine.dimensions.value
+
+    let mnX = Infinity
+    let mnY = Infinity
+    let mxX = -Infinity
+    let mxY = -Infinity
+
+    for (const id of selected) {
+      const pos = positions.get(id)
+      if (!pos) continue
+      const dims = dimensions.get(id) ?? { width: 180, height: 80 }
+      mnX = Math.min(mnX, pos.x)
+      mnY = Math.min(mnY, pos.y)
+      mxX = Math.max(mxX, pos.x + dims.width)
+      mxY = Math.max(mxY, pos.y + dims.height)
+    }
+
+    if (!isFinite(mnX)) return
+
+    const rect = getContainerRect()
+    const contentWidth = mxX - mnX
+    const contentHeight = mxY - mnY
+    const availWidth = rect.width - padding * 2
+    const availHeight = rect.height - padding * 2
+    if (availWidth <= 0 || availHeight <= 0) return
+
+    const z = Math.min(availWidth / contentWidth, availHeight / contentHeight, maxZoom)
+    const clampedZoom = Math.max(minZoom, z)
+    const centerX = (mnX + mxX) / 2
+    const centerY = (mnY + mxY) / 2
+
+    const target: Viewport = {
+      x: rect.width / 2 - centerX * clampedZoom,
+      y: rect.height / 2 - centerY * clampedZoom,
+      zoom: clampedZoom,
+    }
+    if (animate) {
+      viewportTween.tweenTo(target)
+    } else {
+      viewportProp.set(target)
+    }
   }
 
   // --- Animation state (tracks CSS transition period) ---
   const isAnimating = layoutEngine.transitioning
+
+  // --- Touch handler ---
+  const touchHandler = createTouchHandler(viewportProp, () => getContainerRect(), {
+    minZoom,
+    maxZoom,
+    onZoom: config.events?.onZoom,
+  })
 
   // --- Enter animation config ---
   const enterAnimation = animationConfig.enterExit.enabled
@@ -371,6 +478,24 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     gridVisible: gridVisibleProp,
     gridType: gridTypeProp,
     portPlacement: portPlacementProp,
+    onPortHover: config.events?.onPortHover,
+    onPortLeave: config.events?.onPortLeave,
+    onEdgeDoubleClick: config.events?.onEdgeDoubleClick,
+    onEdgeContextMenu: config.events?.onEdgeContextMenu,
+    edgeMarkers:
+      config.edgeMarkers === true
+        ? { type: 'arrow-closed' }
+        : config.edgeMarkers === false
+          ? undefined
+          : config.edgeMarkers,
+    edgeLabels: config.edgeLabels,
+    theme: config.theme,
+    interactionLocked,
+    toggleLock,
+    onTouchStart: touchHandler.onTouchStart,
+    onTouchMove: touchHandler.onTouchMove,
+    onTouchEnd: touchHandler.onTouchEnd,
+    alignmentGuidesEnabled: config.alignmentGuides,
   })
 
   // --- Instance API ---
@@ -449,6 +574,13 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     setGridType(type: BackgroundType) {
       gridTypeProp.set(type)
     },
+
+    panTo,
+    centerOnNode,
+    centerOnSelection,
+
+    interactionLocked,
+    setInteractionLocked,
 
     isAnimating,
 

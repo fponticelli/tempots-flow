@@ -23,6 +23,7 @@ import {
   createStepStrategy,
   createSmoothStepStrategy,
   createBundledStrategy,
+  createOrthogonalStrategy,
 } from '@tempots/flow/edges'
 import '@tempots/flow/css'
 
@@ -125,6 +126,7 @@ const routingStrategies: Record<string, EdgeRoutingStrategy> = {
   Step: createStepStrategy(),
   'Smooth Step': createSmoothStepStrategy({ borderRadius: 32 }),
   Bundled: createBundledStrategy(),
+  Orthogonal: createOrthogonalStrategy(),
 }
 
 function ToolbarButton(label: TNode, isActive: Signal<boolean>, onClick: () => void) {
@@ -150,8 +152,11 @@ const flow = createFlow({
   viewport: { x: 30, y: 30, zoom: 1 },
   layoutTransitionDuration: 300,
   grid: { size: 20, type: 'lines' },
-  controls: { position: 'bottom-left' },
+  controls: { position: 'bottom-left', showLock: true },
   minimap: { position: 'bottom-right', width: 200, height: 150 },
+  alignmentGuides: true,
+  panInertia: true,
+  edgeMarkers: true,
   events: {
     onSelectionChange(nodeIds, edgeIds) {
       console.log('Selection:', { nodes: [...nodeIds], edges: [...edgeIds] })

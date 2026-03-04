@@ -61,6 +61,8 @@ const flow = createFlow({
     ['node-3', { x: 550, y: 50 }],
     ['node-4', { x: 300, y: 320 }],
   ]),
+  alignmentGuides: true,
+  panInertia: true,
   events: {
     onConnect(source, target) {
       edgeCounter++

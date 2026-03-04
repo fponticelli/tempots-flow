@@ -54,6 +54,13 @@ export function createEdgePathsSignal<N, E>(
       return { edge, sourcePoint, targetPoint }
     })
 
+    // Build obstacle list from node positions/dimensions
+    const obstacles: { position: Position; dimensions: Dimensions }[] = []
+    for (const [nodeId, pos] of posMap) {
+      const dims = dimMap.get(nodeId) ?? DEFAULT_DIMS
+      obstacles.push({ position: pos, dimensions: dims })
+    }
+
     // Use batch routing if available, otherwise per-edge
     let pathMap: ReadonlyMap<string, string> | null = null
     if (routingStrategy.computeAllPaths) {
@@ -63,6 +70,7 @@ export function createEdgePathsSignal<N, E>(
           source: e.sourcePoint,
           target: e.targetPoint,
         })),
+        obstacles,
       })
     }
 

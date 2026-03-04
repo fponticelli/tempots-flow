@@ -31,6 +31,7 @@ export function Port(
     attr.class(isHovered.map((h): string => (h ? 'flow-port--hovered' : ''))),
     dataAttr.portid!(definition.$.id),
     dataAttr.portdirection!(definition.map((d): string => d.direction)),
+    dataAttr.porttype!(definition.map((d): string => d.type ?? '')),
 
     on.pointerdown((e: PointerEvent) => {
       e.stopPropagation()

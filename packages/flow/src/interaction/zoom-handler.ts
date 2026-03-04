@@ -7,6 +7,7 @@ export function handleZoom(
   event: WheelEvent,
   containerRect: DOMRect,
   config: { minZoom: number; maxZoom: number; zoomStep: number },
+  onZoom?: (zoom: number) => void,
 ): void {
   event.preventDefault()
 
@@ -25,4 +26,5 @@ export function handleZoom(
   const newY = mouseY - (mouseY - viewport.y) * zoomRatio
 
   viewportProp.set({ x: newX, y: newY, zoom: newZoom })
+  onZoom?.(newZoom)
 }

@@ -47,6 +47,7 @@ function draw(
   vp: Viewport,
   getContainerRect: () => DOMRect,
   nodeColor: string,
+  nodeRenderer?: (nodeId: string) => string,
 ): void {
   const canvasWidth = canvas.width
   const canvasHeight = canvas.height
@@ -77,8 +78,8 @@ function draw(
   }
 
   // Draw nodes
-  ctx.fillStyle = nodeColor
   for (const [nodeId, pos] of positions) {
+    ctx.fillStyle = nodeRenderer ? nodeRenderer(nodeId) : nodeColor
     const dims = dimensions.get(nodeId) ?? { width: 180, height: 80 }
     const x = toMinimapX(pos.x)
     const y = toMinimapY(pos.y)
@@ -157,6 +158,7 @@ export function Minimap(
   const width = config.width ?? 200
   const height = config.height ?? 150
   const nodeColor = config.nodeColor ?? '#53a8ff'
+  const nodeRenderer = config.nodeRenderer
   const interactive = config.interactive !== false
   const position = config.position ?? 'bottom-right'
   const positionClass = `flow-minimap--${position}`
@@ -181,6 +183,7 @@ export function Minimap(
             viewport.value,
             getContainerRect,
             nodeColor,
+            nodeRenderer,
           )
         }, 33)
 

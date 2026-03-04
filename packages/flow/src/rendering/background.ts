@@ -67,7 +67,10 @@ export function Background(
   const gap = config.gap ?? 20
   const size = config.size ?? 1
   const color = config.color ?? 'var(--flow-grid-color, rgba(255, 255, 255, 0.05))'
-  const patternTransform = viewport.map((v) => `translate(${v.x}, ${v.y}) scale(${v.zoom})`)
+  const scaleWithZoom = config.scaleWithZoom !== false
+  const patternTransform = viewport.map((v) =>
+    scaleWithZoom ? `translate(${v.x}, ${v.y}) scale(${v.zoom})` : `translate(${v.x}, ${v.y})`,
+  )
 
   if (typeSignal) {
     // Reactive mode: render all three patterns, switch via fill signal

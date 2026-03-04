@@ -164,6 +164,20 @@ function getCrossExtent(
 }
 
 /**
+ * Get the main-axis extent (height for TB/BT, width for LR/RL) of a node.
+ */
+function getMainExtent(
+  nodeId: string,
+  dimensions: ReadonlyMap<string, Dimensions>,
+  isHorizontal: boolean,
+): number {
+  const dims = dimensions.get(nodeId)
+  const w = dims?.width ?? DEFAULT_NODE_WIDTH
+  const h = dims?.height ?? DEFAULT_NODE_HEIGHT
+  return isHorizontal ? w : h
+}
+
+/**
  * Recursively compute the subtree layout for a single tree rooted at `nodeId`.
  *
  * Each node is assigned a cross-axis center position and a main-axis position
@@ -187,9 +201,9 @@ function layoutSubtree(
   const children = treeChildren.get(nodeId)
   const nodeCross = getCrossExtent(nodeId, dimensions, isHorizontal)
 
-  // Compute main-axis position for this depth level.
-  // We accumulate main-axis extent per level to handle variable node sizes.
-  const mainPos = depth * levelSpacing
+  // Store raw depth index; actual main-axis position is resolved later
+  // in resolveMainAxis to account for variable node sizes per depth level.
+  const mainPos = depth
 
   if (!children || children.length === 0) {
     // Leaf node: subtree width is just the node's cross-axis extent
@@ -279,6 +293,45 @@ function shiftSubtree(
 }
 
 /**
+ * Resolve raw depth indices in mainAxis to actual positions that account
+ * for the maximum node main-axis extent at each depth level plus spacing.
+ */
+function resolveMainAxis(
+  positions: Map<string, NodeLayout>,
+  dimensions: ReadonlyMap<string, Dimensions>,
+  isHorizontal: boolean,
+  levelSpacing: number,
+): void {
+  // Collect max main-axis extent per depth level
+  const maxExtentPerLevel = new Map<number, number>()
+  for (const [nodeId, layout] of positions) {
+    const depth = layout.mainAxis
+    const extent = getMainExtent(nodeId, dimensions, isHorizontal)
+    const current = maxExtentPerLevel.get(depth) ?? 0
+    if (extent > current) {
+      maxExtentPerLevel.set(depth, extent)
+    }
+  }
+
+  // Compute cumulative main-axis offsets per depth level
+  const maxDepth = Math.max(0, ...maxExtentPerLevel.keys())
+  const levelOffsets = new Map<number, number>()
+  let cumulative = 0
+  for (let d = 0; d <= maxDepth; d++) {
+    levelOffsets.set(d, cumulative)
+    cumulative += (maxExtentPerLevel.get(d) ?? 0) + levelSpacing
+  }
+
+  // Replace depth indices with actual positions
+  for (const [nodeId, layout] of positions) {
+    positions.set(nodeId, {
+      crossAxis: layout.crossAxis,
+      mainAxis: levelOffsets.get(layout.mainAxis) ?? 0,
+    })
+  }
+}
+
+/**
  * Apply direction transform to convert canonical (crossAxis, mainAxis)
  * coordinates into final (x, y) positions.
  *
@@ -342,6 +395,7 @@ function layoutSingleTree(
     siblingSpacing,
     levelSpacing,
   )
+  resolveMainAxis(positions, dimensions, isHorizontal, levelSpacing)
   return { positions, width }
 }
 
@@ -377,15 +431,16 @@ function layoutSuperRoot(
     levelSpacing,
   )
 
-  // Remove the virtual root and shift all nodes up one level (subtract levelSpacing from mainAxis)
+  // Remove the virtual root and shift depth indices down by 1
   positions.delete(virtualRootId)
   for (const [nodeId, layout] of positions) {
     positions.set(nodeId, {
       crossAxis: layout.crossAxis,
-      mainAxis: layout.mainAxis - levelSpacing,
+      mainAxis: layout.mainAxis - 1,
     })
   }
 
+  resolveMainAxis(positions, dimensions, isHorizontal, levelSpacing)
   return positions
 }
 

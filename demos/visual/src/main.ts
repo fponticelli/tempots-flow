@@ -32,6 +32,7 @@ import {
   createStepStrategy,
   createSmoothStepStrategy,
   createBundledStrategy,
+  createOrthogonalStrategy,
 } from '@tempots/flow/edges'
 import '@tempots/flow/css'
 
@@ -889,6 +890,7 @@ const routingStrategies: Record<string, EdgeRoutingStrategy> = {
   Step: createStepStrategy(),
   'Smooth Step': createSmoothStepStrategy({ borderRadius: 32 }),
   Bundled: createBundledStrategy(),
+  Orthogonal: createOrthogonalStrategy(),
 }
 
 // --- Create flow instance ---
@@ -902,8 +904,17 @@ const flow = createFlow<VisualNodeData, VisualEdgeData>({
   viewport: { x: 30, y: 30, zoom: 1 },
   layoutTransitionDuration: 300,
   grid: { size: 20, type: 'dots' },
-  controls: { position: 'bottom-left' },
+  controls: { position: 'bottom-left', showLock: true },
   minimap: { position: 'bottom-right', width: 200, height: 150 },
+  alignmentGuides: true,
+  panInertia: true,
+  theme: {
+    portTypeStyles: {
+      float: { color: '#f0a500' },
+      color: { color: '#4caf50' },
+      vec2: { color: '#42a5f5' },
+    },
+  },
   events: {
     onSelectionChange(nodeIds, edgeIds) {
       console.log('Selection:', { nodes: [...nodeIds], edges: [...edgeIds] })

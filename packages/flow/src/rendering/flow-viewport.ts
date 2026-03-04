@@ -1,8 +1,7 @@
-import { html, attr, on, WithElement } from '@tempots/dom'
+import { html, attr, on, WithElement, OnDispose } from '@tempots/dom'
 import type { Renderable } from '@tempots/dom'
 import type { Signal } from '@tempots/core'
-import type { Graph } from '../types/graph'
-import type { PortRef } from '../types/graph'
+import type { Graph, PortRef, GraphEdge } from '../types/graph'
 import type {
   Viewport,
   ComputedEdgePath,
@@ -19,8 +18,11 @@ import type {
   BackgroundType,
   ControlsConfig,
   MinimapConfig,
+  EdgeMarkerConfig,
+  EdgeLabelConfig,
 } from '../types/config'
 import type { EnterAnimation } from '../animation/animation-config'
+import type { FlowTheme } from '../types/theme'
 import type { InteractionManager, InteractionTarget } from '../interaction/interaction-manager'
 import { TransformLayer } from './transform-layer'
 import { EdgeLayer } from './edge-layer'
@@ -30,6 +32,7 @@ import { ConnectionPreview } from './connection-preview'
 import { SelectionBox } from './selection-box'
 import { OverlayLayer } from './overlay-layer'
 import { Background } from './background'
+import { AlignmentGuidesLayer } from './alignment-guides-layer'
 
 export interface FlowViewportOptions<N, E> {
   readonly graph: Signal<Graph<N, E>>
@@ -61,6 +64,19 @@ export interface FlowViewportOptions<N, E> {
   readonly gridVisible?: Signal<boolean>
   readonly gridType?: Signal<BackgroundType>
   readonly portPlacement?: Signal<PortPlacement>
+  readonly onPortHover?: (port: PortRef) => void
+  readonly onPortLeave?: (port: PortRef) => void
+  readonly onEdgeDoubleClick?: (edge: GraphEdge<E>, event: PointerEvent) => void
+  readonly onEdgeContextMenu?: (edge: GraphEdge<E>, event: PointerEvent) => void
+  readonly edgeMarkers?: EdgeMarkerConfig
+  readonly edgeLabels?: (edge: GraphEdge<E>) => EdgeLabelConfig | null
+  readonly theme?: FlowTheme
+  readonly interactionLocked?: Signal<boolean>
+  readonly toggleLock?: () => void
+  readonly onTouchStart?: (e: TouchEvent) => void
+  readonly onTouchMove?: (e: TouchEvent) => void
+  readonly onTouchEnd?: (e: TouchEvent) => void
+  readonly alignmentGuidesEnabled?: boolean
 }
 
 export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderable {
@@ -93,7 +109,14 @@ export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderab
   }
 
   function setHoveredPort(portRef: PortRef | null) {
+    const prev = interactionManager.state.value.hoveredPort
     interactionManager.state.update((s) => ({ ...s, hoveredPort: portRef }))
+    if (portRef && (!prev || prev.nodeId !== portRef.nodeId || prev.portId !== portRef.portId)) {
+      options.onPortHover?.(portRef)
+    }
+    if (prev && !portRef) {
+      options.onPortLeave?.(prev)
+    }
   }
 
   const enterClass =
@@ -105,12 +128,24 @@ export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderab
     attr.class('flow-viewport'),
     attr.class(allowManualPositioning.map((v): string => (v ? 'flow--manual-positioning' : ''))),
     attr.class(enterClass),
+    options.theme?.containerClass ? attr.class(options.theme.containerClass) : null,
+    options.interactionLocked
+      ? attr.class(options.interactionLocked.map((l): string => (l ? 'flow-viewport--locked' : '')))
+      : null,
     options.portPlacement
       ? attr.class(
           options.portPlacement.map((p): string =>
             p === 'vertical' ? 'flow--port-placement-vertical' : '',
           ),
         )
+      : null,
+    // Theme: apply custom CSS properties
+    options.theme?.customProperties
+      ? WithElement((el: HTMLElement) => {
+          for (const [k, v] of Object.entries(options.theme!.customProperties!)) {
+            el.style.setProperty(k, v)
+          }
+        })
       : null,
     attr.tabindex(0),
 
@@ -148,9 +183,22 @@ export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderab
       interactionManager.handleWheel(e)
     }),
 
-    // Capture container rect after mount
+    // Capture container rect + attach touch handlers after mount
     WithElement((element: HTMLElement) => {
       setContainerRect(() => element.getBoundingClientRect())
+      if (options.onTouchStart) {
+        const ts = options.onTouchStart
+        const tm = options.onTouchMove!
+        const te = options.onTouchEnd!
+        element.addEventListener('touchstart', ts, { passive: false })
+        element.addEventListener('touchmove', tm, { passive: false })
+        element.addEventListener('touchend', te)
+        return OnDispose(() => {
+          element.removeEventListener('touchstart', ts)
+          element.removeEventListener('touchmove', tm)
+          element.removeEventListener('touchend', te)
+        })
+      }
     }),
 
     options.background !== false
@@ -167,6 +215,10 @@ export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderab
         setHoveredEdge,
         transitioning,
         options.edgeRenderer,
+        options.onEdgeDoubleClick,
+        options.onEdgeContextMenu,
+        options.edgeMarkers,
+        options.edgeLabels,
       ),
       GroupLayer(graph, positions, dimensions, interactionState, handleInteraction, transitioning),
       NodeLayer(
@@ -183,6 +235,9 @@ export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderab
       ),
       ConnectionPreview(interactionState, edgeRouting),
       SelectionBox(interactionState),
+      options.alignmentGuidesEnabled
+        ? AlignmentGuidesLayer(interactionManager.alignmentGuides, interactionManager.isDragging)
+        : null,
     ),
 
     OverlayLayer({
@@ -196,6 +251,8 @@ export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderab
       zoomIn: options.zoomIn,
       zoomOut: options.zoomOut,
       fitView: options.fitView,
+      interactionLocked: options.interactionLocked,
+      toggleLock: options.toggleLock,
     }),
   )
 }

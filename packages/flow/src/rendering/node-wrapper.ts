@@ -1,4 +1,14 @@
-import { html, attr, on, style, Ensure, computedOf, effectOf, signal } from '@tempots/dom'
+import {
+  html,
+  attr,
+  on,
+  style,
+  Ensure,
+  WithElement,
+  OnDispose,
+  computedOf,
+  signal,
+} from '@tempots/dom'
 import type { TNode } from '@tempots/dom'
 import type { Signal, Value } from '@tempots/core'
 import type { Graph, GraphNode, PortRef } from '../types/graph'
@@ -10,7 +20,6 @@ import type { Diagnostic } from '../types/validation'
 import { Port } from './port'
 import { defaultNodeRenderer } from './default-node-renderer'
 import type { NodeRenderer, PortRenderer } from '../types/config'
-import { ElementRect } from '@tempots/ui'
 
 export function NodeWrapper<N, E>(
   nodeSignal: Signal<GraphNode<N>>,
@@ -101,11 +110,23 @@ export function NodeWrapper<N, E>(
       setHoveredNode(null)
     }),
 
-    ElementRect((rect) => {
-      effectOf(rect)((r) => {
-        onDimensionsChange(nodeId.value, { width: r.width, height: r.height })
+    WithElement((el: HTMLElement) => {
+      // Report initial dimensions (offsetWidth/Height are not affected by CSS transforms,
+      // unlike getBoundingClientRect which includes the viewport zoom scaling)
+      onDimensionsChange(nodeId.value, { width: el.offsetWidth, height: el.offsetHeight })
+
+      let ro: ResizeObserver | null = null
+      if (typeof ResizeObserver !== 'undefined') {
+        ro = new ResizeObserver(() => {
+          onDimensionsChange(nodeId.value, { width: el.offsetWidth, height: el.offsetHeight })
+        })
+        ro.observe(el)
+      }
+
+      return OnDispose(() => {
+        ro?.disconnect()
       })
-      return render(nodeSignal, renderContext)
     }),
+    render(nodeSignal, renderContext),
   )
 }

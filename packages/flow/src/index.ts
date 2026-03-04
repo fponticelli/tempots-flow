@@ -13,10 +13,24 @@ export {
   removeEdge,
   removeEdges,
   connectedEdges,
+  connectedPorts,
   mergeGraphs,
   groupNodes,
   ungroupNodes,
+  duplicate,
+  outgoingNodes,
+  incomingNodes,
+  topologicalSort,
 } from './core/graph-mutations'
+
+// Serialization
+export {
+  serializeView,
+  deserializeView,
+  serializeGraph,
+  deserializeGraph,
+} from './core/serialization'
+export type { FlowViewSnapshot, GraphSerializer, SerializedGraph } from './core/serialization'
 
 // Compound node utilities
 export {
@@ -80,11 +94,15 @@ export type {
   MinimapConfig,
   GridConfig,
   PortTypeConfig,
+  EdgeMarkerType,
+  EdgeMarkerConfig,
+  EdgeLabelConfig,
   FlowConfig,
   FlowInstance,
 } from './types/config'
 
 export type { FlowEvents } from './types/events'
+export type { FlowTheme, PortTypeStyle } from './types/theme'
 
 export type { HistoryManager, FlowSnapshot } from './core/history-manager'
 export type { ClipboardManager, ClipboardContents } from './core/clipboard-manager'
@@ -108,6 +126,16 @@ export { resolveAnimationConfig } from './animation/animation-config'
 export { defaultEdgeRenderer } from './rendering/default-edge-renderer'
 export { defaultPortRenderer } from './rendering/port'
 export { createEdgeOverlay, computeEdgeAngle } from './rendering/edge-overlay'
+
+// Edge flow effects
+export { EdgeFlowParticle, createEdgeFlowParticle } from './rendering/edge-flow-particle'
+export type { EdgeFlowParticleConfig } from './rendering/edge-flow-particle'
+export { EdgeFlowPulse, createEdgeFlowPulse } from './rendering/edge-flow-pulse'
+export type { EdgeFlowPulseConfig } from './rendering/edge-flow-pulse'
+
+// Alignment guides
+export type { AlignmentGuide, AlignmentResult } from './interaction/alignment-guides'
+export { computeAlignmentGuides } from './interaction/alignment-guides'
 
 export type { DiagnosticSeverity, DiagnosticTarget, Diagnostic } from './types/validation'
 

@@ -1,8 +1,15 @@
 import type { Prop } from '@tempots/core'
 import type { InteractionState, DragState } from '../types/interaction'
-import type { Position } from '../types/layout'
+import type { Position, Dimensions } from '../types/layout'
 import type { FlowEvents } from '../types/events'
 import { snapToGrid } from '../core/coordinate-utils'
+import { computeAlignmentGuides, type AlignmentResult } from './alignment-guides'
+
+export interface DragConfig {
+  readonly alignmentGuides?: boolean
+  readonly alignmentSnapThreshold?: number
+  readonly dragBounds?: { readonly min?: Position; readonly max?: Position }
+}
 
 export function handleDragStart(
   state: Prop<InteractionState>,
@@ -34,10 +41,15 @@ export function handleDragMove(
   setNodePosition: (nodeId: string, position: Position) => void,
   snap: boolean,
   gridSize: number,
-): void {
+  dragConfig?: DragConfig,
+  allPositions?: ReadonlyMap<string, Position>,
+  allDimensions?: ReadonlyMap<string, Dimensions>,
+): AlignmentResult | null {
   const dx = currentGraphPos.x - drag.startMousePosition.x
   const dy = currentGraphPos.y - drag.startMousePosition.y
 
+  // Compute tentative positions
+  const tentativePositions = new Map<string, Position>()
   for (const nodeId of drag.nodeIds) {
     const start = drag.startPositions.get(nodeId)
     if (start) {
@@ -47,9 +59,55 @@ export function handleDragMove(
         newX = snapToGrid(newX, gridSize)
         newY = snapToGrid(newY, gridSize)
       }
-      setNodePosition(nodeId, { x: newX, y: newY })
+      tentativePositions.set(nodeId, { x: newX, y: newY })
     }
   }
+
+  // Alignment guides
+  let alignmentResult: AlignmentResult | null = null
+  if (dragConfig?.alignmentGuides && allPositions && allDimensions) {
+    const threshold = dragConfig.alignmentSnapThreshold ?? 5
+    alignmentResult = computeAlignmentGuides(
+      drag.nodeIds,
+      tentativePositions,
+      allPositions,
+      allDimensions,
+      threshold,
+    )
+
+    // Apply alignment snap offset
+    if (alignmentResult.snappedPosition) {
+      const snapDx = alignmentResult.snappedPosition.x
+      const snapDy = alignmentResult.snappedPosition.y
+      for (const [nodeId, pos] of tentativePositions) {
+        tentativePositions.set(nodeId, { x: pos.x + snapDx, y: pos.y + snapDy })
+      }
+    }
+  }
+
+  // Drag bounds
+  if (dragConfig?.dragBounds) {
+    const { min, max } = dragConfig.dragBounds
+    for (const [nodeId, pos] of tentativePositions) {
+      let { x, y } = pos
+      if (min) {
+        x = Math.max(min.x, x)
+        y = Math.max(min.y, y)
+      }
+      if (max) {
+        x = Math.min(max.x, x)
+        y = Math.min(max.y, y)
+      }
+      tentativePositions.set(nodeId, { x, y })
+    }
+  }
+
+  // Apply positions
+  for (const [nodeId, pos] of tentativePositions) {
+    setNodePosition(nodeId, pos)
+  }
+
+  return alignmentResult
 }
 
 export function handleDragEnd<N, E>(

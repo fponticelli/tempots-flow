@@ -14,6 +14,7 @@ import type {
 import type { Diagnostic } from './validation'
 import type { FlowEvents } from './events'
 import type { PartialAnimationConfig } from '../animation/animation-config'
+import type { FlowTheme } from './theme'
 
 // --- Node rendering ---
 
@@ -55,6 +56,24 @@ export interface EdgeOverlayConfig {
   readonly orientation?: 'horizontal' | 'path'
 }
 
+export type EdgeMarkerType = 'arrow' | 'arrow-closed' | 'dot' | 'diamond'
+
+export interface EdgeMarkerConfig {
+  readonly type?: EdgeMarkerType
+  readonly size?: number
+  readonly color?: string
+}
+
+export interface EdgeLabelConfig {
+  readonly content: string
+  /** Position along edge: 0 = source, 0.5 = center, 1 = target. Default: 0.5 */
+  readonly position?: number
+  /** Perpendicular offset in px. Default: 0 */
+  readonly offset?: number
+  /** Whether the label background is shown. Default: true */
+  readonly background?: boolean
+}
+
 export interface EdgeRoutingStrategy {
   computePath(params: EdgeRoutingParams): string
   computeAllPaths?(params: EdgeBatchRoutingParams): ReadonlyMap<string, string>
@@ -71,6 +90,7 @@ export interface EdgeBatchRoutingParams {
     readonly source: ComputedPortPosition
     readonly target: ComputedPortPosition
   }[]
+  readonly obstacles?: readonly { readonly position: Position; readonly dimensions: Dimensions }[]
 }
 
 // --- Port rendering ---
@@ -105,6 +125,8 @@ export interface BackgroundConfig {
   readonly gap?: number
   readonly size?: number
   readonly color?: string
+  /** Whether the background pattern scales with zoom. Default: true */
+  readonly scaleWithZoom?: boolean
 }
 
 export interface ControlsConfig {
@@ -112,6 +134,7 @@ export interface ControlsConfig {
   readonly showZoomIn?: boolean
   readonly showZoomOut?: boolean
   readonly showFitView?: boolean
+  readonly showLock?: boolean
 }
 
 export interface MinimapConfig {
@@ -120,6 +143,8 @@ export interface MinimapConfig {
   readonly height?: number
   readonly interactive?: boolean
   readonly nodeColor?: string
+  /** Custom node color renderer for per-node colors on the minimap */
+  readonly nodeRenderer?: (nodeId: string) => string
 }
 
 // --- Grid ---
@@ -152,6 +177,8 @@ export interface FlowConfig<N, E> {
   readonly edgeRenderer?: EdgeRenderer<E>
   readonly portRenderer?: PortRenderer
   readonly edgeRouting?: EdgeRoutingStrategy
+  readonly edgeMarkers?: boolean | EdgeMarkerConfig
+  readonly edgeLabels?: (edge: GraphEdge<E>) => EdgeLabelConfig | null
   readonly layout?: LayoutAlgorithm
   readonly initialPositions?: ReadonlyMap<string, Position>
   readonly viewport?: Partial<Viewport>
@@ -169,6 +196,14 @@ export interface FlowConfig<N, E> {
   readonly nodesSelectable?: boolean
   readonly edgesSelectable?: boolean
   readonly multiSelectionKey?: 'shift' | 'meta' | 'ctrl'
+
+  // Pan enhancements
+  readonly panInertia?: boolean
+  readonly panBounds?: 'none' | 'soft' | 'hard'
+
+  // Drag enhancements
+  readonly alignmentGuides?: boolean
+  readonly dragBounds?: { readonly min?: Position; readonly max?: Position }
 
   // Port placement
   readonly portPlacement?: PortPlacement
@@ -202,6 +237,9 @@ export interface FlowConfig<N, E> {
   readonly background?: BackgroundConfig | false
   readonly controls?: ControlsConfig | false
   readonly minimap?: MinimapConfig | false
+
+  // Theming
+  readonly theme?: FlowTheme
 }
 
 // --- Flow instance ---
@@ -257,6 +295,15 @@ export interface FlowInstance<N, E> {
   setGridVisible(visible: boolean): void
   readonly gridType: Signal<BackgroundType>
   setGridType(type: BackgroundType): void
+
+  // Viewport navigation
+  panTo(position: Position, animate?: boolean): void
+  centerOnNode(nodeId: string, zoom?: number, animate?: boolean): void
+  centerOnSelection(padding?: number, animate?: boolean): void
+
+  // Interaction lock
+  readonly interactionLocked: Signal<boolean>
+  setInteractionLocked(locked: boolean): void
 
   // Animation state
   readonly isAnimating: Signal<boolean>

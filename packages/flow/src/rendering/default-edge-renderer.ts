@@ -5,11 +5,17 @@ import type { ComputedEdgePath } from '../types/layout'
 import type { GraphEdge } from '../types/graph'
 import type { EdgeRenderContext } from '../types/config'
 
+export interface DefaultEdgeMarkerAttrs {
+  readonly markerStart: Signal<string | undefined>
+  readonly markerEnd: Signal<string | undefined>
+}
+
 /** Legacy renderer used internally when no custom EdgeRenderer is provided. */
 export function DefaultEdgeRenderer(
   edgePath: Signal<ComputedEdgePath>,
   isSelected: Signal<boolean>,
   isHovered: Signal<boolean>,
+  markerAttrs?: DefaultEdgeMarkerAttrs,
 ): TNode {
   const d = edgePath.map((ep) => ep.d)
 
@@ -23,7 +29,12 @@ export function DefaultEdgeRenderer(
     svg.path(svgAttr.d(d), attr.class('flow-edge-hitbox')),
 
     // Visible edge
-    svg.path(svgAttr.d(d), attr.class('flow-edge')),
+    svg.path(
+      svgAttr.d(d),
+      attr.class('flow-edge'),
+      markerAttrs ? svgAttr['marker-start'](markerAttrs.markerStart.map((v) => v ?? '')) : null,
+      markerAttrs ? svgAttr['marker-end'](markerAttrs.markerEnd.map((v) => v ?? '')) : null,
+    ),
   )
 }
 

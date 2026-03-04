@@ -1,8 +1,9 @@
-import type { Graph } from '../types/graph'
+import type { Graph, GraphNode } from '../types/graph'
 import type { Position } from '../types/layout'
 import type { HistoryManager } from '../core/history-manager'
 import type { ClipboardManager } from '../core/clipboard-manager'
-import { removeNodes, removeEdges } from '../core/graph-mutations'
+import { removeNodes, removeEdges, groupNodes, ungroupNodes } from '../core/graph-mutations'
+import { navigateByArrow, cycleToNode, getFirstNode, getLastNode } from './keyboard-navigation'
 
 export interface KeyboardActions<N, E> {
   readonly getGraph: () => Graph<N, E>
@@ -18,6 +19,10 @@ export interface KeyboardActions<N, E> {
   readonly onDelete?: (nodeIds: ReadonlySet<string>, edgeIds: ReadonlySet<string>) => void
   readonly onCopy?: (nodeIds: ReadonlySet<string>) => void
   readonly onPaste?: (pastedNodeIds: readonly string[]) => void
+  readonly zoomIn?: () => void
+  readonly zoomOut?: () => void
+  readonly fitView?: () => void
+  readonly createGroupNode?: (nodeIds: readonly string[]) => GraphNode<N>
 }
 
 function isInputFocused(event: KeyboardEvent): boolean {
@@ -129,6 +134,103 @@ export function handleKeyDown<N, E>(event: KeyboardEvent, actions: KeyboardActio
     actions.clearSelection()
     actions.history.record()
     actions.onDelete?.(selectedNodes, selectedEdges)
+    return
+  }
+
+  // Ctrl+G — group selected nodes
+  if (isMod && event.key === 'g' && !event.shiftKey) {
+    if (isInputFocused(event)) return
+    event.preventDefault()
+    const selectedNodes = actions.getSelectedNodeIds()
+    if (selectedNodes.size < 2 || !actions.createGroupNode) return
+    const nodeIds = [...selectedNodes]
+    const groupNode = actions.createGroupNode(nodeIds)
+    actions.updateGraph((g) => groupNodes(g, nodeIds, groupNode))
+    actions.history.record()
+    return
+  }
+
+  // Ctrl+Shift+G — ungroup
+  if (isMod && event.key === 'g' && event.shiftKey) {
+    if (isInputFocused(event)) return
+    event.preventDefault()
+    const selectedNodes = actions.getSelectedNodeIds()
+    if (selectedNodes.size !== 1) return
+    const groupId = [...selectedNodes][0]!
+    actions.updateGraph((g) => ungroupNodes(g, groupId))
+    actions.history.record()
+    return
+  }
+
+  // + or = — zoom in
+  if (event.key === '+' || event.key === '=') {
+    if (isInputFocused(event)) return
+    event.preventDefault()
+    actions.zoomIn?.()
+    return
+  }
+
+  // - — zoom out
+  if (event.key === '-') {
+    if (isInputFocused(event)) return
+    event.preventDefault()
+    actions.zoomOut?.()
+    return
+  }
+
+  // 0 — fit view
+  if (event.key === '0' && !isMod) {
+    if (isInputFocused(event)) return
+    event.preventDefault()
+    actions.fitView?.()
+    return
+  }
+
+  // Home — select first node
+  if (event.key === 'Home') {
+    if (isInputFocused(event)) return
+    event.preventDefault()
+    const first = getFirstNode(actions.getPositions())
+    if (first) actions.selectNodes([first])
+    return
+  }
+
+  // End — select last node
+  if (event.key === 'End') {
+    if (isInputFocused(event)) return
+    event.preventDefault()
+    const last = getLastNode(actions.getPositions())
+    if (last) actions.selectNodes([last])
+    return
+  }
+
+  // Tab / Shift+Tab — cycle through nodes
+  if (event.key === 'Tab') {
+    if (isInputFocused(event)) return
+    event.preventDefault()
+    const direction = event.shiftKey ? 'backward' : 'forward'
+    const next = cycleToNode(direction, actions.getSelectedNodeIds(), actions.getPositions())
+    if (next) actions.selectNodes([next])
+    return
+  }
+
+  // Arrow keys — navigate by edge/spatial
+  if (
+    event.key === 'ArrowUp' ||
+    event.key === 'ArrowDown' ||
+    event.key === 'ArrowLeft' ||
+    event.key === 'ArrowRight'
+  ) {
+    if (isInputFocused(event)) return
+    event.preventDefault()
+    const dir = event.key.replace('Arrow', '').toLowerCase() as 'up' | 'down' | 'left' | 'right'
+    const next = navigateByArrow(
+      dir,
+      actions.getGraph(),
+      actions.getSelectedNodeIds(),
+      actions.getPositions(),
+    )
+    if (next) actions.selectNodes([next])
     return
   }
 }

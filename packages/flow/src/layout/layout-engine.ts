@@ -14,6 +14,7 @@ export interface LayoutEngine {
   setNodePosition(nodeId: string, position: Position): void
   setAllPositions(positions: ReadonlyMap<string, Position>): void
   updateDimensions(nodeId: string, dims: Dimensions): void
+
   setAlgorithm(algorithm: LayoutAlgorithm): void
 }
 

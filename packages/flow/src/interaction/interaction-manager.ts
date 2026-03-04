@@ -5,9 +5,10 @@ import { createInitialInteractionState } from '../types/interaction'
 import type { Position, Viewport, Dimensions, PortPlacement } from '../types/layout'
 import type { FlowConfig } from '../types/config'
 import type { Graph, GraphNode, GraphEdge } from '../types/graph'
-import { handlePanStart, handlePanMove, handlePanEnd } from './pan-handler'
+import type { PanConfig } from './pan-handler'
+import { handlePanStart, handlePanMove, handlePanEnd, computeContentBounds } from './pan-handler'
 import { handleZoom } from './zoom-handler'
-import { handleDragStart, handleDragMove, handleDragEnd } from './drag-handler'
+import { handleDragStart, handleDragMove, handleDragEnd, type DragConfig } from './drag-handler'
 import {
   handleConnectionStart,
   handleConnectionMove,
@@ -22,6 +23,7 @@ import { handleNodeClick, handleEdgeClick } from './selection-handler'
 import { screenToGraph } from '../core/coordinate-utils'
 import { computePortPositionsForNode } from '../edges/port-positions'
 import { expandGroupDragIds } from '../layout/compound-utils'
+import type { AlignmentGuide } from './alignment-guides'
 
 export type InteractionTarget =
   | { readonly type: 'viewport' }
@@ -31,6 +33,8 @@ export type InteractionTarget =
 
 export interface InteractionManager {
   readonly state: Prop<InteractionState>
+  readonly alignmentGuides: Signal<readonly AlignmentGuide[]>
+  readonly isDragging: Signal<boolean>
   handlePointerDown(event: PointerEvent, target: InteractionTarget): void
   handlePointerMove(event: PointerEvent): void
   handlePointerUp(event: PointerEvent): void
@@ -49,8 +53,20 @@ export function createInteractionManager<N, E>(
   portPlacement: Signal<PortPlacement>,
 ): InteractionManager {
   const state = prop(createInitialInteractionState())
+  const alignmentGuidesProp = prop<readonly AlignmentGuide[]>([])
+  const isDragging = state.map((s) => s.mode === 'dragging-nodes')
 
   const multiKey = config.multiSelectionKey ?? 'shift'
+
+  const panConfig: PanConfig = {
+    inertia: config.panInertia,
+    bounds: config.panBounds,
+  }
+
+  const dragConfig: DragConfig = {
+    alignmentGuides: config.alignmentGuides,
+    dragBounds: config.dragBounds,
+  }
 
   function isMultiSelect(event: PointerEvent | MouseEvent): boolean {
     switch (multiKey) {
@@ -69,6 +85,8 @@ export function createInteractionManager<N, E>(
 
   return {
     state,
+    alignmentGuides: alignmentGuidesProp,
+    isDragging,
 
     handlePointerDown(event: PointerEvent, target: InteractionTarget) {
       if (target.type === 'viewport') {
@@ -125,12 +143,9 @@ export function createInteractionManager<N, E>(
         const portPos = portPositions.get(target.portId)
         if (!portPos) return
 
-        handleConnectionStart(
-          state,
-          { nodeId: target.nodeId, portId: target.portId },
-          portPos.side,
-          { x: portPos.x, y: portPos.y },
-        )
+        const portRef = { nodeId: target.nodeId, portId: target.portId }
+        handleConnectionStart(state, portRef, portPos.side, { x: portPos.x, y: portPos.y })
+        config.events?.onConnectionStart?.(portRef)
         return
       }
     },
@@ -139,7 +154,8 @@ export function createInteractionManager<N, E>(
       const mode = state.value.mode
 
       if (mode === 'panning') {
-        handlePanMove(state, viewportProp, event)
+        const contentBounds = computeContentBounds(positions.value, dimensions.value)
+        handlePanMove(state, viewportProp, event, panConfig, contentBounds)
         return
       }
 
@@ -147,13 +163,17 @@ export function createInteractionManager<N, E>(
         const drag = state.value.drag
         if (!drag) return
         const currentGraph = graphPos(event)
-        handleDragMove(
+        const alignmentResult = handleDragMove(
           drag,
           currentGraph,
           setNodePosition,
           config.snapToGrid ?? false,
           config.snapGridSize ?? 20,
+          dragConfig,
+          positions.value,
+          dimensions.value,
         )
+        alignmentGuidesProp.set(alignmentResult?.guides ?? [])
         state.update((s) => ({
           ...s,
           drag: { ...drag, startMousePosition: drag.startMousePosition },
@@ -162,9 +182,10 @@ export function createInteractionManager<N, E>(
       }
 
       if (mode === 'connecting') {
+        const pos = graphPos(event)
         handleConnectionMove(
           state,
-          graphPos(event),
+          pos,
           graphSignal.value,
           positions.value,
           dimensions.value,
@@ -172,6 +193,10 @@ export function createInteractionManager<N, E>(
           config.portTypes,
           portPlacement.value,
         )
+        const conn = state.value.connection
+        if (conn) {
+          config.events?.onConnectionDrag?.(conn.sourcePort, pos)
+        }
         return
       }
 
@@ -185,16 +210,22 @@ export function createInteractionManager<N, E>(
       const mode = state.value.mode
 
       if (mode === 'panning') {
-        handlePanEnd(state)
+        const contentBounds = computeContentBounds(positions.value, dimensions.value)
+        handlePanEnd(state, viewportProp, panConfig, contentBounds)
         return
       }
 
       if (mode === 'dragging-nodes') {
+        alignmentGuidesProp.set([])
         handleDragEnd(state, config.events)
         return
       }
 
       if (mode === 'connecting') {
+        const conn = state.value.connection
+        if (conn) {
+          config.events?.onConnectionEnd?.(conn.sourcePort, conn.targetPort)
+        }
         handleConnectionEnd(state, config.events)
         return
       }
@@ -207,11 +238,17 @@ export function createInteractionManager<N, E>(
 
     handleWheel(event: WheelEvent) {
       if (config.zoomEnabled !== false) {
-        handleZoom(viewportProp, event, getContainerRect(), {
-          minZoom: config.minZoom ?? 0.1,
-          maxZoom: config.maxZoom ?? 4,
-          zoomStep: config.zoomStep ?? 0.1,
-        })
+        handleZoom(
+          viewportProp,
+          event,
+          getContainerRect(),
+          {
+            minZoom: config.minZoom ?? 0.1,
+            maxZoom: config.maxZoom ?? 4,
+            zoomStep: config.zoomStep ?? 0.1,
+          },
+          config.events?.onZoom,
+        )
       }
     },
   }
