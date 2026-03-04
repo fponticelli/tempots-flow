@@ -27,6 +27,15 @@ export function TransitionKeyedForEach<T>(options: TransitionKeyedForEachOptions
         const currentKeys = new Set(currentItems.map(key))
         const prevTracked = tracked.value
 
+        // Cancel exit timers for items that re-entered the list
+        for (const k of currentKeys) {
+          const timer = exitTimers.get(k)
+          if (timer !== undefined) {
+            clearTimeout(timer)
+            exitTimers.delete(k)
+          }
+        }
+
         // Find items that were just removed (not yet flagged as exiting)
         const newlyRemovedItems = prevTracked.filter(
           (t) => !currentKeys.has(key(t.item)) && !t.exiting,
@@ -49,8 +58,10 @@ export function TransitionKeyedForEach<T>(options: TransitionKeyedForEachOptions
         // Active items currently in the list (not exiting)
         const active = currentItems.map((item) => ({ item, exiting: false }))
 
-        // Items that are still mid-exit (timer running)
-        const stillExiting = prevTracked.filter((t) => t.exiting && exitTimers.has(key(t.item)))
+        // Items that are still mid-exit (timer running, not re-entered)
+        const stillExiting = prevTracked.filter(
+          (t) => t.exiting && exitTimers.has(key(t.item)) && !currentKeys.has(key(t.item)),
+        )
 
         // Newly removed items entering exit state
         const newlyExiting = newlyRemovedItems.map((t) => ({

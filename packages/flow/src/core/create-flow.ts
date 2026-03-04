@@ -117,19 +117,52 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     containerMounted.set(containerMounted.value + 1)
   }
 
+  // --- Viewport tween (before culling so target signal is available) ---
+  const viewportTween = createViewportTween(viewportProp, animationConfig.viewport, reducedMotion)
+
   // --- Viewport culling ---
   const cullMargin = config.cullMargin ?? 100
   const visibleNodeIds = computed(() => {
     const rect = getContainerRect()
-    return computeVisibleNodeIds(
+    const positions = layoutEngine.positions.value
+    const dimensions = layoutEngine.dimensions.value
+    const visible = computeVisibleNodeIds(
       viewportProp.value,
       rect.width,
       rect.height,
-      layoutEngine.positions.value,
-      layoutEngine.dimensions.value,
+      positions,
+      dimensions,
       cullMargin,
     )
-  }, [viewportProp, layoutEngine.positions, layoutEngine.dimensions, containerMounted])
+
+    // During animated viewport transitions, also include nodes visible at
+    // the target viewport so they are already in the DOM when the animation
+    // reaches them (prevents pop-in).
+    const tweenTarget = viewportTween.target.value
+    if (tweenTarget) {
+      const atTarget = computeVisibleNodeIds(
+        tweenTarget,
+        rect.width,
+        rect.height,
+        positions,
+        dimensions,
+        cullMargin,
+      )
+      if (atTarget.size !== visible.size) {
+        const union = new Set(visible)
+        for (const id of atTarget) union.add(id)
+        return union as ReadonlySet<string>
+      }
+    }
+
+    return visible
+  }, [
+    viewportProp,
+    layoutEngine.positions,
+    layoutEngine.dimensions,
+    containerMounted,
+    viewportTween.target,
+  ])
   const visibleEdgeIds = computed(
     () => computeVisibleEdgeIds(visibleNodeIds.value, graphProp.value.edges),
     [visibleNodeIds, graphProp],
@@ -152,9 +185,6 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     const g = graphProp.value
     return config.validators.flatMap((v) => v(g))
   }, [graphProp])
-
-  // --- Viewport tween ---
-  const viewportTween = createViewportTween(viewportProp, animationConfig.viewport, reducedMotion)
 
   // --- History manager ---
   const historyManager = createHistoryManager(

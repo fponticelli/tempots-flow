@@ -182,19 +182,19 @@ const graph: Graph<string, string> = {
 }
 
 const layouts: Record<string, LayoutAlgorithm> = {
-  'Hierarchical LR': hierarchicalLayout({ direction: 'LR', layerSpacing: 250, nodeSpacing: 60 }),
-  'Hierarchical TB': hierarchicalLayout({ direction: 'TB', layerSpacing: 150, nodeSpacing: 80 }),
-  'Tree LR': treeLayout({ direction: 'LR', levelSpacing: 250, siblingSpacing: 60 }),
-  'Tree TB': treeLayout({ direction: 'TB', levelSpacing: 150, siblingSpacing: 60 }),
-  Grid: gridLayout({ columns: 4, columnSpacing: 250, rowSpacing: 150 }),
+  'Hierarchical LR': hierarchicalLayout({ direction: 'LR', layerSpacing: 170, nodeSpacing: 40 }),
+  'Hierarchical TB': hierarchicalLayout({ direction: 'TB', layerSpacing: 100, nodeSpacing: 50 }),
+  'Tree LR': treeLayout({ direction: 'LR', levelSpacing: 170, siblingSpacing: 40 }),
+  'Tree TB': treeLayout({ direction: 'TB', levelSpacing: 100, siblingSpacing: 40 }),
+  Grid: gridLayout({ columns: 4, columnSpacing: 170, rowSpacing: 100 }),
   Force: forceDirectedLayout(),
   Manual: manualLayout,
 }
 
 const activeLayout: Prop<string> = prop('Hierarchical LR')
 const showGrid: Prop<boolean> = prop(true)
-const activeGridType: Prop<BackgroundType> = prop<BackgroundType>('lines')
-const activeRouting: Prop<string> = prop('Bezier')
+const activeGridType: Prop<BackgroundType> = prop<BackgroundType>('dots')
+const activeRouting: Prop<string> = prop('Orthogonal')
 const activePortPlacement: Prop<PortPlacement> = prop<PortPlacement>('horizontal')
 
 const routingStrategies: Record<string, EdgeRoutingStrategy> = {
@@ -222,7 +222,10 @@ const pipelineEdgeRenderer: EdgeRenderer<string> = (
     attr.class('flow-edge-group'),
     attr.class(context.isSelected.map((s): string => (s ? 'flow-edge--selected' : ''))),
     attr.class(context.isHovered.map((h): string => (h ? 'flow-edge--hovered' : ''))),
-    dataAttr('edgeid', context.path.map((ep) => ep.edgeId)),
+    dataAttr(
+      'edgeid',
+      context.path.map((ep) => ep.edgeId),
+    ),
 
     svg.path(svgAttr.d(d), attr.class('flow-edge')),
 
@@ -233,7 +236,7 @@ const pipelineEdgeRenderer: EdgeRenderer<string> = (
           count: 5,
           speed: 120,
           radius: 4,
-          color: '#53d8ff',
+          color: '#0066cc',
         }),
     ),
 
@@ -244,7 +247,7 @@ const pipelineEdgeRenderer: EdgeRenderer<string> = (
           speed: 60,
           width: 4,
           dashArray: '16 10',
-          color: '#53d8ff',
+          color: '#0066cc',
         }),
     ),
   )
@@ -253,16 +256,14 @@ const pipelineEdgeRenderer: EdgeRenderer<string> = (
 function ToolbarButton(label: TNode, isActive: Signal<boolean>, onClick: () => void) {
   return html.button(
     label,
-    style.padding('6px 12px'),
+    style.padding('4px 10px'),
     style.cursor('pointer'),
-    style.border(
-      isActive.map((a): string => (a ? '1px solid #53a8ff' : '1px solid rgba(255,255,255,0.15)')),
-    ),
-    style.borderRadius('4px'),
-    style.background(
-      isActive.map((a): string => (a ? 'rgba(83, 168, 255, 0.3)' : 'rgba(255,255,255,0.05)')),
-    ),
-    style.color(isActive.map((a): string => (a ? '#ffffff' : 'rgba(255,255,255,0.6)'))),
+    style.fontSize('0.8rem'),
+    style.fontFamily('inherit'),
+    style.border(isActive.map((a): string => (a ? '1.5px solid #0066cc' : '1px solid #c8c8c0'))),
+    style.borderRadius('2px'),
+    style.background(isActive.map((a): string => (a ? '#0066cc' : '#ffffff'))),
+    style.color(isActive.map((a): string => (a ? '#ffffff' : '#555555'))),
     on.click(onClick),
   )
 }
@@ -270,22 +271,20 @@ function ToolbarButton(label: TNode, isActive: Signal<boolean>, onClick: () => v
 function ActionButton(label: string, onClick: () => void): TNode {
   return html.button(
     label,
-    style.padding('6px 12px'),
+    style.padding('4px 10px'),
     style.cursor('pointer'),
-    style.border('1px solid rgba(255,255,255,0.15)'),
-    style.borderRadius('4px'),
-    style.background('rgba(255,255,255,0.05)'),
-    style.color('rgba(255,255,255,0.6)'),
+    style.fontSize('0.8rem'),
+    style.fontFamily('inherit'),
+    style.border('1px solid #c8c8c0'),
+    style.borderRadius('2px'),
+    style.background('#ffffff'),
+    style.color('#555555'),
     on.click(onClick),
   )
 }
 
 function Separator(): TNode {
-  return html.span(
-    style.width('1px'),
-    style.background('rgba(255,255,255,0.15)'),
-    style.alignSelf('stretch'),
-  )
+  return html.span(style.width('1px'), style.background('#d0d0c8'), style.alignSelf('stretch'))
 }
 
 // Per-edge routing: assign different strategies to individual edges
@@ -310,12 +309,13 @@ function applyMixedRouting(enabled: boolean) {
 const flow = createFlow({
   graph: prop(graph),
   edgeRenderer: pipelineEdgeRenderer,
-  layout: hierarchicalLayout({ direction: 'LR', layerSpacing: 250, nodeSpacing: 60 }),
+  layout: hierarchicalLayout({ direction: 'LR', layerSpacing: 170, nodeSpacing: 40 }),
+  edgeRouting: createOrthogonalStrategy(),
   viewport: { x: 30, y: 30, zoom: 1 },
   animation: {
-    layout: { duration: 400, easing: springEasing(170, 26) },
+    layout: { duration: 300, easing: springEasing(200, 28) },
   },
-  grid: { size: 20, type: 'lines' },
+  grid: { size: 16, type: 'dots' },
   controls: { position: 'bottom-left', showLock: true },
   minimap: { position: 'bottom-right', width: 200, height: 150 },
   alignmentGuides: true,
@@ -342,7 +342,8 @@ render(
       style.display('flex'),
       style.gap('8px'),
       style.padding('8px'),
-      style.background('rgba(0,0,0,0.6)'),
+      style.background('#e8e8e2'),
+      style.borderBottom('1.5px solid #c8c8c0'),
       style.zIndex('10'),
       style.flexWrap('wrap'),
       style.alignItems('center'),
@@ -445,11 +446,13 @@ render(
         style.position('absolute'),
         style.top('8px'),
         style.right('8px'),
-        style.padding('4px 10px'),
-        style.borderRadius('4px'),
-        style.background('rgba(0,0,0,0.5)'),
+        style.padding('3px 8px'),
+        style.borderRadius('2px'),
+        style.background('rgba(255,255,255,0.85)'),
+        style.border('1px solid #c8c8c0'),
         style.fontSize('0.75em'),
-        style.color('rgba(255,255,255,0.5)'),
+        style.fontFamily('inherit'),
+        style.color('#888888'),
         style.pointerEvents('none'),
         'Visible: ',
         flow.visibleNodeIds.map((s) => `${s.size}`),

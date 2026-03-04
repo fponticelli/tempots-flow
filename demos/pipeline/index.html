@@ -16,18 +16,80 @@
         width: 100%;
         height: 100vh;
         font-family:
+          'Inter',
+          'SF Pro Display',
           system-ui,
           -apple-system,
-          'Segoe UI',
-          Roboto,
-          'Helvetica Neue',
-          Arial,
           sans-serif;
+        font-size: 14px;
       }
     </style>
+    <!-- Light geometric theme — loaded after library CSS via a second <style> in body -->
   </head>
   <body>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
+
+    <!-- Override library CSS (must come after the JS import bundles the lib styles) -->
+    <style>
+      /* ── Light geometric overrides ── */
+      /* Only override colors/cosmetics — keep sizing consistent with JS port-position constants */
+      .flow-viewport.flow-viewport {
+        --flow-viewport-bg: #f4f3ef;
+        --flow-grid-color: rgba(0, 0, 0, 0.06);
+        --flow-node-bg: #ffffff;
+        --flow-node-border: #d0cfc8;
+        --flow-node-border-radius: 2px;
+        --flow-node-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+        --flow-node-color: #333333;
+        --flow-node-header-bg: #eae9e4;
+        --flow-node-header-color: #222222;
+        --flow-node-min-width: 140px;
+        --flow-selection-border: #0066cc;
+        --flow-selection-bg: rgba(0, 102, 204, 0.08);
+        --flow-node-selected-border: #0066cc;
+        --flow-node-selected-shadow: 0 0 0 1.5px #0066cc;
+        --flow-port-bg: #e0dfd8;
+        --flow-port-border: #999;
+        --flow-port-connected-bg: #666;
+        --flow-edge-color: #999;
+        --flow-edge-width: 1.5px;
+        --flow-edge-hover-width: 2.5px;
+        --flow-edge-selected-color: #0066cc;
+        --flow-connection-valid-color: #2d8a4e;
+        --flow-connection-invalid-color: #cc3333;
+      }
+
+      /* Square ports — cosmetic only, keep default size */
+      .flow-viewport .flow-port {
+        border-radius: 1px !important;
+      }
+
+      /* Geometric text styling — no padding changes */
+      .flow-viewport .flow-node-header {
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        font-size: 0.85em;
+      }
+
+      /* Minimap — light */
+      .flow-viewport .flow-minimap {
+        border-radius: 2px !important;
+        border-color: #d0cfc8 !important;
+        background: rgba(244, 243, 239, 0.9) !important;
+      }
+
+      /* Controls — light */
+      .flow-viewport .flow-controls button {
+        background: #fff !important;
+        border: 1px solid #d0cfc8 !important;
+        color: #333 !important;
+        border-radius: 2px !important;
+      }
+      .flow-viewport .flow-controls button:hover {
+        background: #eae9e4 !important;
+      }
+    </style>
   </body>
 </html>
