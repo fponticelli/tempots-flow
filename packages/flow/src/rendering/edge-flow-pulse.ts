@@ -1,4 +1,4 @@
-import { svg, attr, svgAttr, WithElement, OnDispose } from '@tempots/dom'
+import { svg, attr, svgAttr, WithElement, OnDispose, createRafLoop } from '@tempots/dom'
 import type { TNode } from '@tempots/dom'
 import type { Signal } from '@tempots/core'
 
@@ -15,7 +15,7 @@ export interface EdgeFlowPulseConfig {
 
 /**
  * Renders a pulsing dash animation along an edge path.
- * Uses requestAnimationFrame for seamless looping.
+ * Uses createRafLoop from @tempots/dom for the animation loop.
  */
 export function EdgeFlowPulse(
   pathD: Signal<string>,
@@ -40,25 +40,15 @@ export function EdgeFlowPulse(
     svgAttr['stroke-linecap']('round'),
     svgAttr.opacity('0.85'),
     WithElement((el: Element) => {
-      let rafId = 0
-      let lastTime = 0
       let offset = 0
 
-      function animate(time: number) {
-        if (lastTime === 0) lastTime = time
-        const dt = (time - lastTime) / 1000
-        lastTime = time
-
-        offset = (offset + speed * dt) % patternLength
+      const loop = createRafLoop((dt) => {
+        offset = (offset + speed * (dt / 1000)) % patternLength
         el.setAttribute('stroke-dashoffset', String(-offset))
-
-        rafId = requestAnimationFrame(animate)
-      }
-
-      rafId = requestAnimationFrame(animate)
+      })
 
       return OnDispose(() => {
-        cancelAnimationFrame(rafId)
+        loop.dispose()
       })
     }),
   )

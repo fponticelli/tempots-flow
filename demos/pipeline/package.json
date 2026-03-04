@@ -9,8 +9,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@tempots/core": "^3.0.1",
-    "@tempots/dom": "^37.0.4",
+    "@tempots/core": "^3.1.0",
+    "@tempots/dom": "^37.1.0",
     "@tempots/flow": "workspace:*"
   },
   "devDependencies": {

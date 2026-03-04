@@ -1,4 +1,4 @@
-import { svg, attr, WithElement, OnDispose } from '@tempots/dom'
+import { svg, attr, WithElement, OnDispose, createRafLoop } from '@tempots/dom'
 import type { TNode } from '@tempots/dom'
 import type { Signal } from '@tempots/core'
 
@@ -15,7 +15,7 @@ export interface EdgeFlowParticleConfig {
 
 /**
  * Renders animated particles flowing along an SVG path.
- * Uses requestAnimationFrame to advance particle positions.
+ * Uses createRafLoop from @tempots/dom for the animation loop.
  */
 export function EdgeFlowParticle(pathD: Signal<string>, config?: EdgeFlowParticleConfig): TNode {
   const count = config?.count ?? 3
@@ -66,22 +66,13 @@ export function EdgeFlowParticle(pathD: Signal<string>, config?: EdgeFlowParticl
         circles.push(circle)
       }
 
-      let rafId = 0
-      let lastTime = 0
       let offset = 0
 
-      function animate(time: number) {
-        if (lastTime === 0) lastTime = time
-        const dt = (time - lastTime) / 1000
-        lastTime = time
-
+      const loop = createRafLoop((dt) => {
         const totalLength = pathEl.getTotalLength()
-        if (totalLength <= 0) {
-          rafId = requestAnimationFrame(animate)
-          return
-        }
+        if (totalLength <= 0) return
 
-        offset = (offset + speed * dt) % totalLength
+        offset = (offset + speed * (dt / 1000)) % totalLength
         const spacing = totalLength / count
 
         for (let i = 0; i < count; i++) {
@@ -90,19 +81,15 @@ export function EdgeFlowParticle(pathD: Signal<string>, config?: EdgeFlowParticl
           circles[i]!.setAttribute('cx', String(pt.x))
           circles[i]!.setAttribute('cy', String(pt.y))
         }
+      })
 
-        rafId = requestAnimationFrame(animate)
-      }
-
-      // Update path when signal changes (.on() fires with current value)
+      // Update path when signal changes
       const unsubscribe = pathD.on((d) => {
         pathEl.setAttribute('d', d)
       })
 
-      rafId = requestAnimationFrame(animate)
-
       return OnDispose(() => {
-        cancelAnimationFrame(rafId)
+        loop.dispose()
         unsubscribe()
       })
     }),

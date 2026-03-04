@@ -45,15 +45,15 @@
     "clean": "rm -rf dist"
   },
   "peerDependencies": {
-    "@tempots/core": "^3.0.1"
+    "@tempots/core": "^3.1.0"
   },
   "dependencies": {
-    "@tempots/dom": "^37.0.4",
-    "@tempots/std": "^0.26.1",
+    "@tempots/dom": "^37.1.0",
+    "@tempots/std": "^0.27.0",
     "@tempots/ui": "^16.0.1"
   },
   "devDependencies": {
-    "@tempots/core": "^3.0.1",
+    "@tempots/core": "^3.1.0",
     "@vitest/coverage-v8": "^4.0.18",
     "jsdom": "^26.1.0",
     "tsup": "^8.4.0",

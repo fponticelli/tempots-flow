@@ -26,11 +26,11 @@ importers:
   demos/basic:
     dependencies:
       '@tempots/core':
-        specifier: ^3.0.1
-        version: 3.0.1
+        specifier: ^3.1.0
+        version: 3.1.0
       '@tempots/dom':
-        specifier: ^37.0.4
-        version: 37.0.4
+        specifier: ^37.1.0
+        version: 37.1.0
       '@tempots/flow':
         specifier: workspace:*
         version: link:../../packages/flow
@@ -45,11 +45,11 @@ importers:
   demos/pipeline:
     dependencies:
       '@tempots/core':
-        specifier: ^3.0.1
-        version: 3.0.1
+        specifier: ^3.1.0
+        version: 3.1.0
       '@tempots/dom':
-        specifier: ^37.0.4
-        version: 37.0.4
+        specifier: ^37.1.0
+        version: 37.1.0
       '@tempots/flow':
         specifier: workspace:*
         version: link:../../packages/flow
@@ -64,11 +64,11 @@ importers:
   demos/visual:
     dependencies:
       '@tempots/core':
-        specifier: ^3.0.1
-        version: 3.0.1
+        specifier: ^3.1.0
+        version: 3.1.0
       '@tempots/dom':
-        specifier: ^37.0.4
-        version: 37.0.4
+        specifier: ^37.1.0
+        version: 37.1.0
       '@tempots/flow':
         specifier: workspace:*
         version: link:../../packages/flow
@@ -83,18 +83,18 @@ importers:
   packages/flow:
     dependencies:
       '@tempots/dom':
-        specifier: ^37.0.4
-        version: 37.0.4
+        specifier: ^37.1.0
+        version: 37.1.0
       '@tempots/std':
-        specifier: ^0.26.1
-        version: 0.26.1
+        specifier: ^0.27.0
+        version: 0.27.0
       '@tempots/ui':
         specifier: ^16.0.1
-        version: 16.0.1(@floating-ui/dom@1.7.5)(@tempots/dom@37.0.4)(@tempots/std@0.26.1)
+        version: 16.0.1(@floating-ui/dom@1.7.5)(@tempots/dom@37.1.0)(@tempots/std@0.27.0)
     devDependencies:
       '@tempots/core':
-        specifier: ^3.0.1
-        version: 3.0.1
+        specifier: ^3.1.0
+        version: 3.1.0
       '@vitest/coverage-v8':
         specifier: ^4.0.18
         version: 4.0.18(vitest@4.0.18(jsdom@26.1.0))
@@ -1007,16 +1007,16 @@ packages:
         integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==,
       }
 
-  '@tempots/core@3.0.1':
+  '@tempots/core@3.1.0':
     resolution:
       {
-        integrity: sha512-Kha+pF0aznd9Kcsz4YIbTuzNEn2fZ8Gn06627vQvZgVuRKB+994cUMwMRuu8IFhAOhBbU++oGmArQ1ti54aKMg==,
+        integrity: sha512-FfaRi8zU51a+qTSMFYq2b5DdA1SQnuuLJke1Qc5WjzxSP3RcPyVocZe4Y91CapxiGqY1CnyViO9PXLHj5nd5yg==,
       }
 
-  '@tempots/dom@37.0.4':
+  '@tempots/dom@37.1.0':
     resolution:
       {
-        integrity: sha512-kcbwBqsC7AFIrmcnwcsnjWXoQftTkyj6NLwGHga9xaTyWUFC8qdeQcmbqaW/EPzXeFlcviT9I1mJyy6rGTIrpw==,
+        integrity: sha512-pbqV81+Q4subEsVyKEFmjwpiWobN5GG+DanqRg33gIpDTX/vMOrj8/FqPybzsoCCC9k2oQ8up0mnE6iU7uQX8g==,
       }
 
   '@tempots/render@0.0.5':
@@ -1025,10 +1025,10 @@ packages:
         integrity: sha512-vFxqTuYY75seLypUzBRdA5dCZvGnVFIixhyR1Y/xEvatb4q+3uocoqHAwFtummvFWE9CVs6nkIw4GyvsqWrltA==,
       }
 
-  '@tempots/std@0.26.1':
+  '@tempots/std@0.27.0':
     resolution:
       {
-        integrity: sha512-5+T92KkzyamjY8y2kjO9kwAunBhOff3FtA34iFy1PAz8DMh7vQV6VySkxCcweOAN2o1tgZV5IQE4SU38dRCFYg==,
+        integrity: sha512-jte23rhp0aSzlXhwf76GNu9zQjeFiwfoJgvZ+8BFdZ6aBz06WPZwfzSVLLqhR3nBZj6BjrbpP8BhardsYwU9IA==,
       }
 
   '@tempots/ui@16.0.1':
@@ -2889,24 +2889,24 @@ snapshots:
 
   '@standard-schema/spec@1.1.0': {}
 
-  '@tempots/core@3.0.1': {}
+  '@tempots/core@3.1.0': {}
 
-  '@tempots/dom@37.0.4':
+  '@tempots/dom@37.1.0':
     dependencies:
-      '@tempots/core': 3.0.1
+      '@tempots/core': 3.1.0
       '@tempots/render': 0.0.5
 
   '@tempots/render@0.0.5':
     dependencies:
-      '@tempots/core': 3.0.1
+      '@tempots/core': 3.1.0
 
-  '@tempots/std@0.26.1': {}
+  '@tempots/std@0.27.0': {}
 
-  '@tempots/ui@16.0.1(@floating-ui/dom@1.7.5)(@tempots/dom@37.0.4)(@tempots/std@0.26.1)':
+  '@tempots/ui@16.0.1(@floating-ui/dom@1.7.5)(@tempots/dom@37.1.0)(@tempots/std@0.27.0)':
     dependencies:
       '@floating-ui/dom': 1.7.5
-      '@tempots/dom': 37.0.4
-      '@tempots/std': 0.26.1
+      '@tempots/dom': 37.1.0
+      '@tempots/std': 0.27.0
 
   '@types/chai@5.2.3':
     dependencies:

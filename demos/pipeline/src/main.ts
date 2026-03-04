@@ -222,7 +222,7 @@ const pipelineEdgeRenderer: EdgeRenderer<string> = (
     attr.class('flow-edge-group'),
     attr.class(context.isSelected.map((s): string => (s ? 'flow-edge--selected' : ''))),
     attr.class(context.isHovered.map((h): string => (h ? 'flow-edge--hovered' : ''))),
-    dataAttr.edgeid!(context.path.map((ep) => ep.edgeId)),
+    dataAttr('edgeid', context.path.map((ep) => ep.edgeId)),
 
     svg.path(svgAttr.d(d), attr.class('flow-edge')),
 

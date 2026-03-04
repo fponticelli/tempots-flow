@@ -23,7 +23,10 @@ export function DefaultEdgeRenderer(
     attr.class('flow-edge-group'),
     attr.class(isSelected.map((s): string => (s ? 'flow-edge--selected' : ''))),
     attr.class(isHovered.map((h): string => (h ? 'flow-edge--hovered' : ''))),
-    dataAttr.edgeid!(edgePath.map((ep) => ep.edgeId)),
+    dataAttr(
+      'edgeid',
+      edgePath.map((ep) => ep.edgeId),
+    ),
 
     // Invisible hitbox for interaction
     svg.path(svgAttr.d(d), attr.class('flow-edge-hitbox')),
@@ -49,7 +52,10 @@ export function defaultEdgeRenderer<E>(
     attr.class('flow-edge-group'),
     attr.class(context.isSelected.map((s): string => (s ? 'flow-edge--selected' : ''))),
     attr.class(context.isHovered.map((h): string => (h ? 'flow-edge--hovered' : ''))),
-    dataAttr.edgeid!(context.path.map((ep) => ep.edgeId)),
+    dataAttr(
+      'edgeid',
+      context.path.map((ep) => ep.edgeId),
+    ),
 
     svg.path(svgAttr.d(d), attr.class('flow-edge')),
   )
