@@ -1,3 +1,4 @@
+import { interpolateNumber } from '@tempots/core'
 import type { Prop, Signal } from '@tempots/core'
 import type { Viewport } from '../types/layout'
 import type { ViewportTransitionConfig } from './animation-config'
@@ -46,9 +47,9 @@ export function createViewportTween(
       const p = ease(t)
 
       viewportProp.set({
-        x: from.x + (target.x - from.x) * p,
-        y: from.y + (target.y - from.y) * p,
-        zoom: from.zoom + (target.zoom - from.zoom) * p,
+        x: interpolateNumber(from.x, target.x, p),
+        y: interpolateNumber(from.y, target.y, p),
+        zoom: interpolateNumber(from.zoom, target.zoom, p),
       })
 
       if (t < 1) {

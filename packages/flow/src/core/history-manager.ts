@@ -1,5 +1,5 @@
-import { prop } from '@tempots/core'
-import type { Prop, Signal } from '@tempots/core'
+import { prop, propHistory } from '@tempots/core'
+import type { Signal, Prop } from '@tempots/core'
 import type { Graph } from '../types/graph'
 import type { Position } from '../types/layout'
 
@@ -22,21 +22,12 @@ export function createHistoryManager<N, E>(
   restorePositions: (positions: ReadonlyMap<string, Position>) => void,
   options?: { maxSize?: number },
 ): HistoryManager<N, E> {
-  const maxSize = options?.maxSize ?? 100
-  const canUndoProp = prop(false)
-  const canRedoProp = prop(false)
+  const snapshotProp = prop<FlowSnapshot<N, E>>({
+    graph: graphProp.value,
+    positions: getPositions(),
+  })
 
-  let entries: FlowSnapshot<N, E>[] = [{ graph: graphProp.value, positions: getPositions() }]
-  let pointer = 0
-
-  function updateFlags() {
-    canUndoProp.set(pointer > 0)
-    canRedoProp.set(pointer < entries.length - 1)
-  }
-
-  function currentSnapshot(): FlowSnapshot<N, E> {
-    return { graph: graphProp.value, positions: getPositions() }
-  }
+  const history = propHistory(snapshotProp, { maxSize: options?.maxSize ?? 100 })
 
   function restore(snap: FlowSnapshot<N, E>) {
     graphProp.set(snap.graph)
@@ -44,37 +35,21 @@ export function createHistoryManager<N, E>(
   }
 
   return {
-    canUndo: canUndoProp,
-    canRedo: canRedoProp,
+    canUndo: history.canUndo,
+    canRedo: history.canRedo,
 
     record() {
-      entries = entries.slice(0, pointer + 1)
-      entries.push(currentSnapshot())
-      if (entries.length > maxSize) {
-        entries = entries.slice(entries.length - maxSize)
-        pointer = entries.length - 1
-      } else {
-        pointer++
-      }
-      updateFlags()
+      history.set({ graph: graphProp.value, positions: getPositions() })
     },
 
     undo() {
-      if (pointer <= 0) return
-      // Save current state at the current pointer position
-      // so redo can restore it
-      entries[pointer] = currentSnapshot()
-      pointer--
-      restore(entries[pointer]!)
-      updateFlags()
+      history.undo()
+      restore(snapshotProp.value)
     },
 
     redo() {
-      if (pointer >= entries.length - 1) return
-      entries[pointer] = currentSnapshot()
-      pointer++
-      restore(entries[pointer]!)
-      updateFlags()
+      history.redo()
+      restore(snapshotProp.value)
     },
   }
 }

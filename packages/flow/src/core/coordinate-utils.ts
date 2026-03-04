@@ -1,3 +1,4 @@
+import { clamp } from '@tempots/std'
 import type { Position, Viewport } from '../types/layout'
 
 export function screenToGraph(
@@ -23,9 +24,7 @@ export function graphToScreen(
   }
 }
 
-export function clampZoom(zoom: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, zoom))
-}
+export const clampZoom = clamp
 
 export function snapToGrid(value: number, gridSize: number): number {
   return Math.round(value / gridSize) * gridSize
