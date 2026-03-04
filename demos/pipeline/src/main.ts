@@ -182,11 +182,11 @@ const graph: Graph<string, string> = {
 }
 
 const layouts: Record<string, LayoutAlgorithm> = {
-  'Hierarchical LR': hierarchicalLayout({ direction: 'LR', layerSpacing: 170, nodeSpacing: 40 }),
-  'Hierarchical TB': hierarchicalLayout({ direction: 'TB', layerSpacing: 100, nodeSpacing: 50 }),
-  'Tree LR': treeLayout({ direction: 'LR', levelSpacing: 170, siblingSpacing: 40 }),
-  'Tree TB': treeLayout({ direction: 'TB', levelSpacing: 100, siblingSpacing: 40 }),
-  Grid: gridLayout({ columns: 4, columnSpacing: 170, rowSpacing: 100 }),
+  'Hierarchical LR': hierarchicalLayout({ direction: 'LR', layerSpacing: 150, nodeSpacing: 30 }),
+  'Hierarchical TB': hierarchicalLayout({ direction: 'TB', layerSpacing: 80, nodeSpacing: 40 }),
+  'Tree LR': treeLayout({ direction: 'LR', levelSpacing: 150, siblingSpacing: 30 }),
+  'Tree TB': treeLayout({ direction: 'TB', levelSpacing: 80, siblingSpacing: 30 }),
+  Grid: gridLayout({ columns: 4, columnSpacing: 150, rowSpacing: 80 }),
   Force: forceDirectedLayout(),
   Manual: manualLayout,
 }
@@ -194,7 +194,7 @@ const layouts: Record<string, LayoutAlgorithm> = {
 const activeLayout: Prop<string> = prop('Hierarchical LR')
 const showGrid: Prop<boolean> = prop(true)
 const activeGridType: Prop<BackgroundType> = prop<BackgroundType>('dots')
-const activeRouting: Prop<string> = prop('Orthogonal')
+const activeRouting: Prop<string> = prop('Bundled')
 const activePortPlacement: Prop<PortPlacement> = prop<PortPlacement>('horizontal')
 
 const routingStrategies: Record<string, EdgeRoutingStrategy> = {
@@ -309,8 +309,8 @@ function applyMixedRouting(enabled: boolean) {
 const flow = createFlow({
   graph: prop(graph),
   edgeRenderer: pipelineEdgeRenderer,
-  layout: hierarchicalLayout({ direction: 'LR', layerSpacing: 170, nodeSpacing: 40 }),
-  edgeRouting: createOrthogonalStrategy(),
+  layout: hierarchicalLayout({ direction: 'LR', layerSpacing: 150, nodeSpacing: 30 }),
+  edgeRouting: createBundledStrategy(),
   viewport: { x: 30, y: 30, zoom: 1 },
   animation: {
     layout: { duration: 300, easing: springEasing(200, 28) },
@@ -463,3 +463,6 @@ render(
   ),
   '#app',
 )
+
+// Fit the entire graph into view after initial layout settles
+setTimeout(() => flow.fitView(40), 100)

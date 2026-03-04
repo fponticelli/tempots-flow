@@ -120,6 +120,9 @@ function findOrthogonalPath(
   return detourRoute(start, end, sourceSide, targetSide, obstacles, maxIterations)
 }
 
+/** Threshold below which coordinates are treated as aligned. */
+const SNAP_THRESHOLD = 4
+
 function tryDirectRoute(
   start: Point,
   end: Point,
@@ -130,10 +133,20 @@ function tryDirectRoute(
   const tgtH = targetSide === 'left' || targetSide === 'right'
 
   if (srcH && tgtH) {
+    // Nearly same Y → straight horizontal line
+    if (Math.abs(start.y - end.y) < SNAP_THRESHOLD) {
+      const y = (start.y + end.y) / 2
+      return [{ x: start.x, y }, { x: end.x, y }]
+    }
     const midX = (start.x + end.x) / 2
     return [start, { x: midX, y: start.y }, { x: midX, y: end.y }, end]
   }
   if (!srcH && !tgtH) {
+    // Nearly same X → straight vertical line
+    if (Math.abs(start.x - end.x) < SNAP_THRESHOLD) {
+      const x = (start.x + end.x) / 2
+      return [{ x, y: start.y }, { x, y: end.y }]
+    }
     const midY = (start.y + end.y) / 2
     return [start, { x: start.x, y: midY }, { x: end.x, y: midY }, end]
   }

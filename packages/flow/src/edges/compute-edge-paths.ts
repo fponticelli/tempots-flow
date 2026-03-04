@@ -7,6 +7,7 @@ import type {
   Position,
   Dimensions,
   PortPlacement,
+  PortOffset,
 } from '../types/layout'
 import type { EdgeRoutingStrategy } from '../types/config'
 import { computePortPositionsForNode } from './port-positions'
@@ -22,6 +23,7 @@ export function createEdgePathsSignal<N, E>(
   dimensions: Signal<ReadonlyMap<string, Dimensions>>,
   routing: Signal<EdgeRoutingStrategy>,
   portPlacement: Signal<PortPlacement>,
+  portOffsets: Signal<ReadonlyMap<string, ReadonlyMap<string, PortOffset>>>,
 ): Signal<ComputedEdgePath[]> {
   return computedOf(
     graph,
@@ -29,7 +31,8 @@ export function createEdgePathsSignal<N, E>(
     dimensions,
     routing,
     portPlacement,
-  )((g, posMap, dimMap, routingStrategy, placement): ComputedEdgePath[] => {
+    portOffsets,
+  )((g, posMap, dimMap, routingStrategy, placement, measuredOffsets): ComputedEdgePath[] => {
     const portPositionCache = new Map<string, ReadonlyMap<string, ComputedPortPosition>>()
 
     function getPortPositions(nodeId: string) {
@@ -39,7 +42,25 @@ export function createEdgePathsSignal<N, E>(
         if (!node) return new Map<string, ComputedPortPosition>()
         const pos = posMap.get(nodeId) ?? ZERO_POS
         const dims = dimMap.get(nodeId) ?? DEFAULT_DIMS
-        cached = computePortPositionsForNode(pos, dims, node.ports, placement)
+        const offsets = measuredOffsets.get(nodeId)
+        if (offsets) {
+          // Use DOM-measured port positions
+          const result = new Map<string, ComputedPortPosition>()
+          for (const port of node.ports) {
+            const offset = offsets.get(port.id)
+            if (offset) {
+              result.set(port.id, {
+                x: pos.x + offset.offsetX,
+                y: pos.y + offset.offsetY,
+                side: offset.side,
+              })
+            }
+          }
+          cached = result
+        } else {
+          // Fallback to formula-based positions
+          cached = computePortPositionsForNode(pos, dims, node.ports, placement)
+        }
         portPositionCache.set(nodeId, cached)
       }
       return cached

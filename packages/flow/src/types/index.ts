@@ -15,6 +15,7 @@ export type {
   PortSide,
   ComputedPortPosition,
   ComputedEdgePath,
+  PortOffset,
   LayoutState,
 } from './layout'
 

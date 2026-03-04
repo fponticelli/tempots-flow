@@ -26,6 +26,13 @@ export interface ComputedPortPosition {
   readonly side: PortSide
 }
 
+/** Measured port dot offset relative to its node element's top-left corner. */
+export interface PortOffset {
+  readonly offsetX: number
+  readonly offsetY: number
+  readonly side: PortSide
+}
+
 export interface ComputedEdgePath {
   readonly edgeId: string
   readonly d: string

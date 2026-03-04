@@ -1,7 +1,7 @@
 import { prop, computed } from '@tempots/core'
 import type { Signal, Prop } from '@tempots/core'
 import type { Graph } from '../types/graph'
-import type { Viewport, Dimensions, Position, PortPlacement } from '../types/layout'
+import type { Viewport, Dimensions, Position, PortPlacement, PortOffset } from '../types/layout'
 import type { Diagnostic } from '../types/validation'
 import type { FlowConfig, FlowInstance, BackgroundType } from '../types/config'
 import { createLayoutEngine } from '../layout/layout-engine'
@@ -99,6 +99,11 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
   // --- Port placement ---
   const portPlacementProp = prop<PortPlacement>(config.portPlacement ?? 'horizontal')
 
+  // --- Measured port offsets (DOM-driven) ---
+  const portOffsetsProp: Prop<ReadonlyMap<string, ReadonlyMap<string, PortOffset>>> = prop(
+    new Map() as ReadonlyMap<string, ReadonlyMap<string, PortOffset>>,
+  )
+
   // --- Edge routing ---
   const edgeRoutingProp = prop(config.edgeRouting ?? createBezierStrategy())
   const edgePaths = createEdgePathsSignal(
@@ -107,6 +112,7 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     layoutEngine.dimensions,
     edgeRoutingProp,
     portPlacementProp,
+    portOffsetsProp,
   )
 
   // --- Container rect ---
@@ -238,6 +244,7 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     layoutEngine.dimensions,
     layoutEngine.allowManualPositioning,
     portPlacementProp,
+    portOffsetsProp,
   )
 
   // --- Derived signals ---
@@ -297,6 +304,15 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
   // --- Dimension change handler ---
   function onDimensionsChange(nodeId: string, dims: Dimensions) {
     layoutEngine.updateDimensions(nodeId, dims)
+  }
+
+  // --- Port offset change handler (DOM-measured) ---
+  function onPortOffsetsChange(nodeId: string, offsets: ReadonlyMap<string, PortOffset>) {
+    portOffsetsProp.update((current) => {
+      const next = new Map(current)
+      next.set(nodeId, offsets)
+      return next
+    })
   }
 
   // --- Viewport helpers ---
@@ -594,6 +610,7 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     edgePaths,
     interactionManager,
     onDimensionsChange,
+    onPortOffsetsChange,
     setContainerRect,
     edgeRouting: edgeRoutingProp,
     transitioning: layoutEngine.transitioning,

@@ -2,7 +2,7 @@ import { prop } from '@tempots/core'
 import type { Prop, Signal } from '@tempots/core'
 import type { InteractionState } from '../types/interaction'
 import { createInitialInteractionState } from '../types/interaction'
-import type { Position, Viewport, Dimensions, PortPlacement } from '../types/layout'
+import type { Position, Viewport, Dimensions, PortPlacement, PortOffset, PortSide } from '../types/layout'
 import type { FlowConfig } from '../types/config'
 import type { Graph, GraphNode, GraphEdge } from '../types/graph'
 import type { PanConfig } from './pan-handler'
@@ -53,6 +53,7 @@ export function createInteractionManager<N, E>(
   dimensions: Signal<ReadonlyMap<string, Dimensions>>,
   allowManualPositioning: Signal<boolean>,
   portPlacement: Signal<PortPlacement>,
+  portOffsets: Signal<ReadonlyMap<string, ReadonlyMap<string, PortOffset>>>,
 ): InteractionManager {
   const state = prop(createInitialInteractionState())
   const alignmentGuidesProp = prop<readonly AlignmentGuide[]>([])
@@ -155,12 +156,10 @@ export function createInteractionManager<N, E>(
         const nodeDims = dimensions.value.get(target.nodeId)
         if (!nodePos || !nodeDims) return
 
-        const portPositions = computePortPositionsForNode(
-          nodePos,
-          nodeDims,
-          node.ports,
-          portPlacement.value,
-        )
+        const measured = portOffsets.value.get(target.nodeId)
+        const portPositions = measured
+          ? toMeasuredPositions(nodePos, node.ports, measured)
+          : computePortPositionsForNode(nodePos, nodeDims, node.ports, portPlacement.value)
         const portPos = portPositions.get(target.portId)
         if (!portPos) return
 
@@ -214,6 +213,7 @@ export function createInteractionManager<N, E>(
           config.portTypes,
           portPlacement.value,
           config.connection,
+          portOffsets.value,
         )
         const conn = state.value.connection
         if (conn) {
@@ -292,4 +292,23 @@ export function createInteractionManager<N, E>(
       }
     },
   }
+}
+
+function toMeasuredPositions(
+  nodePos: Position,
+  ports: readonly { readonly id: string }[],
+  offsets: ReadonlyMap<string, PortOffset>,
+): ReadonlyMap<string, { x: number; y: number; side: PortSide }> {
+  const result = new Map<string, { x: number; y: number; side: PortSide }>()
+  for (const port of ports) {
+    const offset = offsets.get(port.id)
+    if (offset) {
+      result.set(port.id, {
+        x: nodePos.x + offset.offsetX,
+        y: nodePos.y + offset.offsetY,
+        side: offset.side,
+      })
+    }
+  }
+  return result
 }

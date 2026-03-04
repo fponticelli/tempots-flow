@@ -12,7 +12,7 @@ import {
 import type { TNode } from '@tempots/dom'
 import type { Signal, Value } from '@tempots/core'
 import type { Graph, GraphNode, PortRef } from '../types/graph'
-import type { Position, Dimensions } from '../types/layout'
+import type { Position, Dimensions, PortOffset, PortSide } from '../types/layout'
 import type { InteractionState } from '../types/interaction'
 import type { NodeRenderContext } from '../types/config'
 import type { InteractionTarget } from '../interaction/interaction-manager'
@@ -30,6 +30,7 @@ export function NodeWrapper<N, E>(
   setHoveredNode: (nodeId: string | null) => void,
   setHoveredPort: (portRef: PortRef | null) => void,
   onDimensionsChange: (nodeId: string, dims: Dimensions) => void,
+  onPortOffsetsChange: (nodeId: string, offsets: ReadonlyMap<string, PortOffset>) => void,
   transitioning: Signal<boolean>,
   nodeRenderer?: NodeRenderer<N>,
   portRenderer?: PortRenderer,
@@ -133,14 +134,47 @@ export function NodeWrapper<N, E>(
       : null,
 
     WithElement((el: HTMLElement) => {
+      function measurePortDots() {
+        const offsets = new Map<string, PortOffset>()
+        const dots = el.querySelectorAll<HTMLElement>('.flow-port-dot')
+        for (const dot of dots) {
+          const portEl = dot.closest<HTMLElement>('.flow-port')
+          if (!portEl) continue
+          const portId = portEl.dataset.portid
+          const direction = portEl.dataset.portdirection
+          if (!portId) continue
+          const dotRect = dot.getBoundingClientRect()
+          const nodeRect = el.getBoundingClientRect()
+          const nodeW = el.offsetWidth
+          const nodeH = el.offsetHeight
+          const offsetX = dotRect.left + dotRect.width / 2 - nodeRect.left
+          const offsetY = dotRect.top + dotRect.height / 2 - nodeRect.top
+          // Infer side from which edge of the node the dot is closest to
+          const dL = Math.abs(offsetX)
+          const dR = Math.abs(offsetX - nodeW)
+          const dT = Math.abs(offsetY)
+          const dB = Math.abs(offsetY - nodeH)
+          const minD = Math.min(dL, dR, dT, dB)
+          const side: PortSide =
+            minD === dL ? 'left' : minD === dR ? 'right' : minD === dT ? 'top' : 'bottom'
+          offsets.set(portId, { offsetX, offsetY, side })
+        }
+        if (offsets.size > 0) {
+          onPortOffsetsChange(nodeId.value, offsets)
+        }
+      }
+
       // Report initial dimensions (offsetWidth/Height are not affected by CSS transforms,
       // unlike getBoundingClientRect which includes the viewport zoom scaling)
       onDimensionsChange(nodeId.value, { width: el.offsetWidth, height: el.offsetHeight })
+      // Defer port measurement to next frame so children are laid out
+      requestAnimationFrame(() => measurePortDots())
 
       let ro: ResizeObserver | null = null
       if (typeof ResizeObserver !== 'undefined') {
         ro = new ResizeObserver(() => {
           onDimensionsChange(nodeId.value, { width: el.offsetWidth, height: el.offsetHeight })
+          measurePortDots()
         })
         ro.observe(el)
       }

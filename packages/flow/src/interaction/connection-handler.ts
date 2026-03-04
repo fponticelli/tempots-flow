@@ -1,6 +1,6 @@
 import type { Prop } from '@tempots/core'
 import type { InteractionState } from '../types/interaction'
-import type { Position, Dimensions, PortSide, PortPlacement } from '../types/layout'
+import type { Position, Dimensions, PortSide, PortPlacement, PortOffset } from '../types/layout'
 import type { Graph, PortRef, PortDefinition } from '../types/graph'
 import type { FlowEvents } from '../types/events'
 import type { PortTypeConfig, ConnectionConfig } from '../types/config'
@@ -36,6 +36,7 @@ export function handleConnectionMove<N, E>(
   portTypeConfig?: PortTypeConfig,
   portPlacement: PortPlacement = 'horizontal',
   connectionConfig?: ConnectionConfig,
+  portOffsets?: ReadonlyMap<string, ReadonlyMap<string, PortOffset>>,
 ): void {
   const connection = state.value.connection
   if (!connection) return
@@ -58,7 +59,10 @@ export function handleConnectionMove<N, E>(
     const nodeDims = dimensions.get(node.id)
     if (!nodePos || !nodeDims) continue
 
-    const portPositions = computePortPositionsForNode(nodePos, nodeDims, node.ports, portPlacement)
+    const measured = portOffsets?.get(node.id)
+    const portPositions = measured
+      ? toComputedPositions(nodePos, node.ports, measured)
+      : computePortPositionsForNode(nodePos, nodeDims, node.ports, portPlacement)
 
     for (const port of node.ports) {
       if (!isPortCompatible(sourcePortDef, port, graph, node.id, portTypeConfig, looseMode))
@@ -156,4 +160,23 @@ function countPortConnections<N, E>(graph: Graph<N, E>, nodeId: string, portId: 
       (e.source.nodeId === nodeId && e.source.portId === portId) ||
       (e.target.nodeId === nodeId && e.target.portId === portId),
   ).length
+}
+
+function toComputedPositions(
+  nodePos: Position,
+  ports: readonly { readonly id: string }[],
+  offsets: ReadonlyMap<string, PortOffset>,
+): ReadonlyMap<string, { x: number; y: number; side: PortSide }> {
+  const result = new Map<string, { x: number; y: number; side: PortSide }>()
+  for (const port of ports) {
+    const offset = offsets.get(port.id)
+    if (offset) {
+      result.set(port.id, {
+        x: nodePos.x + offset.offsetX,
+        y: nodePos.y + offset.offsetY,
+        side: offset.side,
+      })
+    }
+  }
+  return result
 }

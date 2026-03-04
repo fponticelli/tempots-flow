@@ -32,8 +32,8 @@
 
     <!-- Override library CSS (must come after the JS import bundles the lib styles) -->
     <style>
-      /* ── Light geometric overrides ── */
-      /* Only override colors/cosmetics — keep sizing consistent with JS port-position constants */
+      /* ── Light geometric theme ── */
+      /* Port positions are now DOM-measured, so sizing overrides are safe */
       .flow-viewport.flow-viewport {
         --flow-viewport-bg: #f4f3ef;
         --flow-grid-color: rgba(0, 0, 0, 0.06);
@@ -44,11 +44,13 @@
         --flow-node-color: #333333;
         --flow-node-header-bg: #eae9e4;
         --flow-node-header-color: #222222;
-        --flow-node-min-width: 140px;
+        --flow-node-min-width: 120px;
+        --flow-node-padding: 5px;
         --flow-selection-border: #0066cc;
         --flow-selection-bg: rgba(0, 102, 204, 0.08);
         --flow-node-selected-border: #0066cc;
         --flow-node-selected-shadow: 0 0 0 1.5px #0066cc;
+        --flow-port-size: 8px;
         --flow-port-bg: #e0dfd8;
         --flow-port-border: #999;
         --flow-port-connected-bg: #666;
@@ -60,17 +62,23 @@
         --flow-connection-invalid-color: #cc3333;
       }
 
-      /* Square ports — cosmetic only, keep default size */
+      /* Square ports */
       .flow-viewport .flow-port {
         border-radius: 1px !important;
       }
 
-      /* Geometric text styling — no padding changes */
+      /* Compact geometric header */
       .flow-viewport .flow-node-header {
+        padding: 4px 8px !important;
         font-weight: 600;
         letter-spacing: 0.05em;
         text-transform: uppercase;
-        font-size: 0.85em;
+        font-size: 0.8em;
+      }
+
+      /* Compact port rows */
+      .flow-viewport .flow-node-ports {
+        gap: 3px !important;
       }
 
       /* Minimap — light */

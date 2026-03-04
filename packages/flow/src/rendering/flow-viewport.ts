@@ -8,6 +8,7 @@ import type {
   Position,
   Dimensions,
   PortPlacement,
+  PortOffset,
 } from '../types/layout'
 import type {
   NodeRenderer,
@@ -44,6 +45,7 @@ export interface FlowViewportOptions<N, E> {
   readonly edgePaths: Signal<ComputedEdgePath[]>
   readonly interactionManager: InteractionManager
   readonly onDimensionsChange: (nodeId: string, dims: Dimensions) => void
+  readonly onPortOffsetsChange: (nodeId: string, offsets: ReadonlyMap<string, PortOffset>) => void
   readonly setContainerRect: (getter: () => DOMRect) => void
   readonly edgeRouting: Signal<EdgeRoutingStrategy>
   readonly transitioning: Signal<boolean>
@@ -97,6 +99,7 @@ export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderab
     edgePaths,
     interactionManager,
     onDimensionsChange,
+    onPortOffsetsChange,
     setContainerRect,
     edgeRouting,
     transitioning,
@@ -263,6 +266,7 @@ export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderab
         setHoveredNode,
         setHoveredPort,
         onDimensionsChange,
+        onPortOffsetsChange,
         transitioning,
         nodeRenderer,
         options.portRenderer,

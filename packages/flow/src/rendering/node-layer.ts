@@ -3,7 +3,7 @@ import type { TNode } from '@tempots/dom'
 import type { Signal } from '@tempots/core'
 import { computed } from '@tempots/core'
 import type { Graph, GraphNode, PortRef } from '../types/graph'
-import type { Position, Dimensions } from '../types/layout'
+import type { Position, Dimensions, PortOffset } from '../types/layout'
 import type { InteractionState } from '../types/interaction'
 import type { NodeRenderer, PortRenderer } from '../types/config'
 import type { InteractionTarget } from '../interaction/interaction-manager'
@@ -23,6 +23,7 @@ export function NodeLayer<N, E>(
   setHoveredNode: (nodeId: string | null) => void,
   setHoveredPort: (portRef: PortRef | null) => void,
   onDimensionsChange: (nodeId: string, dims: Dimensions) => void,
+  onPortOffsetsChange: (nodeId: string, offsets: ReadonlyMap<string, PortOffset>) => void,
   transitioning: Signal<boolean>,
   nodeRenderer?: NodeRenderer<N>,
   portRenderer?: PortRenderer,
@@ -59,6 +60,7 @@ export function NodeLayer<N, E>(
       setHoveredNode,
       setHoveredPort,
       onDimensionsChange,
+      onPortOffsetsChange,
       transitioning,
       nodeRenderer,
       portRenderer,
