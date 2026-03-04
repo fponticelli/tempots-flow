@@ -8,6 +8,7 @@ import type { InteractionState } from '../types/interaction'
 import type { NodeRenderer, PortRenderer } from '../types/config'
 import type { InteractionTarget } from '../interaction/interaction-manager'
 import type { ExitAnimation } from '../animation/animation-config'
+import type { Diagnostic } from '../types/validation'
 import { NodeWrapper } from './node-wrapper'
 import { getParentIds } from '../layout/compound-utils'
 import { TransitionKeyedForEach } from './transition-keyed-list'
@@ -28,6 +29,8 @@ export function NodeLayer<N, E>(
   exitAnimation?: ExitAnimation,
   exitDuration?: number,
   visibleNodeIds?: Signal<ReadonlySet<string>>,
+  onNodeDoubleClick?: (node: GraphNode<N>, event: PointerEvent) => void,
+  diagnostics?: Signal<readonly Diagnostic[]>,
 ): TNode {
   const allNodeItems = graph.map((g) => {
     const parentIds = getParentIds(g.nodes)
@@ -60,6 +63,8 @@ export function NodeLayer<N, E>(
       nodeRenderer,
       portRenderer,
       isExiting,
+      onNodeDoubleClick,
+      diagnostics,
     )
   }
 

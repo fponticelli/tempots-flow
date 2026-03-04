@@ -57,12 +57,14 @@ export interface EdgeOverlayConfig {
   readonly orientation?: 'horizontal' | 'path'
 }
 
-export type EdgeMarkerType = 'arrow' | 'arrow-closed' | 'dot' | 'diamond'
+export type EdgeMarkerType = 'arrow' | 'arrow-closed' | 'dot' | 'diamond' | 'custom'
 
 export interface EdgeMarkerConfig {
   readonly type?: EdgeMarkerType
   readonly size?: number
   readonly color?: string
+  /** Raw SVG path data for custom markers (used when type is 'custom') */
+  readonly customSvg?: string
 }
 
 export interface EdgeLabelConfig {
@@ -73,6 +75,8 @@ export interface EdgeLabelConfig {
   readonly offset?: number
   /** Whether the label background is shown. Default: true */
   readonly background?: boolean
+  /** Whether the label rotates to follow the edge path. Default: false */
+  readonly followPath?: boolean
 }
 
 export interface EdgeRoutingStrategy {
@@ -327,9 +331,11 @@ export interface FlowInstance<N, E> {
   getNodePosition(nodeId: string): Signal<Position>
   getNodeDimensions(nodeId: string): Signal<Dimensions>
   isNodeSelected(nodeId: string): Signal<boolean>
+  isNodeHovered(nodeId: string): Signal<boolean>
 
   // Reactive diagnostics
   readonly diagnostics: Signal<readonly Diagnostic[]>
+  nodeDiagnostics(nodeId: string): Signal<readonly Diagnostic[]>
 
   // Graph mutations
   updateGraph(updater: (graph: Graph<N, E>) => Graph<N, E>): void
@@ -387,6 +393,11 @@ export interface FlowInstance<N, E> {
 
   // Animation state
   readonly isAnimating: Signal<boolean>
+
+  // Sub-graph navigation
+  readonly subGraphDepth: Signal<number>
+  enterSubGraph(compoundNodeId: string): void
+  exitSubGraph(): void
 
   // The renderable to mount
   readonly renderable: Renderable

@@ -12,7 +12,7 @@ function markerId(type: EdgeMarkerType, position: 'start' | 'end'): string {
   return `flow-marker-${type}-${position}`
 }
 
-function markerPathD(type: EdgeMarkerType): string {
+function markerPathD(type: EdgeMarkerType, customSvg?: string): string {
   switch (type) {
     case 'arrow':
       return 'M 0 0 L 10 5 L 0 10'
@@ -22,6 +22,8 @@ function markerPathD(type: EdgeMarkerType): string {
       return 'M 5 0 A 5 5 0 1 0 5 10 A 5 5 0 1 0 5 0 Z'
     case 'diamond':
       return 'M 0 5 L 5 0 L 10 5 L 5 10 Z'
+    case 'custom':
+      return customSvg ?? 'M 0 0 L 10 5 L 0 10 Z'
   }
 }
 
@@ -34,6 +36,7 @@ function createMarkerElement(
   position: 'start' | 'end',
   size: number,
   color: string,
+  customSvg?: string,
 ): TNode {
   const id = markerId(type, position)
   const refX = position === 'end' ? 10 : 0
@@ -49,7 +52,7 @@ function createMarkerElement(
     svgAttr.markerHeight(String(size)),
     svgAttr.orient(orient),
     svg.path(
-      svgAttr.d(markerPathD(type)),
+      svgAttr.d(markerPathD(type, customSvg)),
       isFilled ? svgAttr.fill(color) : svgAttr.fill('none'),
       isFilled ? null : svgAttr.stroke(color),
       isFilled ? null : svgAttr['stroke-width']('1'),
@@ -63,8 +66,8 @@ export function createMarkerDefs(markerConfig: EdgeMarkerConfig): TNode {
   const color = markerConfig.color ?? 'var(--flow-edge-color, #666)'
 
   return svg.defs(
-    createMarkerElement(type, 'start', size, color),
-    createMarkerElement(type, 'end', size, color),
+    createMarkerElement(type, 'start', size, color, markerConfig.customSvg),
+    createMarkerElement(type, 'end', size, color, markerConfig.customSvg),
   )
 }
 

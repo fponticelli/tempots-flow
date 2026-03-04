@@ -21,9 +21,11 @@ import type {
   EdgeMarkerConfig,
   EdgeLabelConfig,
 } from '../types/config'
+import type { Diagnostic } from '../types/validation'
 import type { EnterAnimation, ExitAnimation } from '../animation/animation-config'
 import type { FlowTheme } from '../types/theme'
 import type { InteractionManager, InteractionTarget } from '../interaction/interaction-manager'
+import type { GraphNode } from '../types/graph'
 import { TransformLayer } from './transform-layer'
 import { EdgeLayer } from './edge-layer'
 import { GroupLayer } from './group-layer'
@@ -81,6 +83,9 @@ export interface FlowViewportOptions<N, E> {
   readonly alignmentGuidesEnabled?: boolean
   readonly visibleNodeIds?: Signal<ReadonlySet<string>>
   readonly visibleEdgeIds?: Signal<ReadonlySet<string>>
+  readonly onNodeDoubleClick?: (node: GraphNode<N>, event: PointerEvent) => void
+  readonly diagnostics?: Signal<readonly Diagnostic[]>
+  readonly onBackgroundDoubleClick?: () => void
 }
 
 export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderable {
@@ -176,6 +181,19 @@ export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderab
       }
     }),
 
+    options.onBackgroundDoubleClick
+      ? on.dblclick((e: MouseEvent) => {
+          const target = e.target as HTMLElement
+          if (
+            target.classList.contains('flow-viewport') ||
+            target.classList.contains('flow-transform-layer') ||
+            target.classList.contains('flow-background')
+          ) {
+            options.onBackgroundDoubleClick!()
+          }
+        })
+      : null,
+
     on.keydown((e: KeyboardEvent) => {
       interactionManager.handleKeyDown(e)
       options.onKeyDown?.(e)
@@ -251,6 +269,8 @@ export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderab
         options.exitAnimation,
         options.exitDuration,
         options.visibleNodeIds,
+        options.onNodeDoubleClick,
+        options.diagnostics,
       ),
       ConnectionPreview(interactionState, edgeRouting),
       SelectionBox(interactionState),

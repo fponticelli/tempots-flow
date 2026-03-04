@@ -202,6 +202,18 @@
   border-color: var(--flow-node-selected-border);
 }
 
+/* Compound nodes (contain a sub-graph) */
+.flow-node--compound .flow-node {
+  border-style: dashed;
+  border-width: 2px;
+  border-color: var(--flow-compound-border, rgba(255, 200, 50, 0.5));
+}
+
+.flow-node--compound .flow-node-header::after {
+  content: ' \25B8';
+  opacity: 0.6;
+}
+
 /* Node header */
 .flow-node-header {
   padding: var(--flow-node-padding);

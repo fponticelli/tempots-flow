@@ -5,6 +5,7 @@ import {
   portCardinality,
   requiredPorts,
   acyclic,
+  validSubGraphMappings,
   compose,
 } from '../../src/validators/index'
 
@@ -284,6 +285,92 @@ describe('acyclic', () => {
     // Bidirectional creates edges in both directions: a→b and b→a, forming a cycle
     expect(diagnostics).toHaveLength(1)
     expect(diagnostics[0]?.severity).toBe('error')
+  })
+})
+
+describe('validSubGraphMappings', () => {
+  it('passes for valid mappings', () => {
+    const graph: Graph<string, string> = {
+      nodes: [
+        {
+          id: 'compound',
+          data: '',
+          ports: [{ id: 'in', direction: 'input' }],
+          subGraph: {
+            innerGraph: {
+              nodes: [
+                {
+                  id: 'inner',
+                  data: '',
+                  ports: [{ id: 'p1', direction: 'input' }],
+                },
+              ],
+              edges: [],
+            },
+            portMappings: [{ innerPortRef: { nodeId: 'inner', portId: 'p1' }, outerPortId: 'in' }],
+          },
+        },
+      ],
+      edges: [],
+    }
+    const diagnostics = validSubGraphMappings()(graph)
+    expect(diagnostics).toHaveLength(0)
+  })
+
+  it('detects missing inner node', () => {
+    const graph: Graph<string, string> = {
+      nodes: [
+        {
+          id: 'compound',
+          data: '',
+          ports: [{ id: 'in', direction: 'input' }],
+          subGraph: {
+            innerGraph: { nodes: [], edges: [] },
+            portMappings: [
+              { innerPortRef: { nodeId: 'missing', portId: 'p1' }, outerPortId: 'in' },
+            ],
+          },
+        },
+      ],
+      edges: [],
+    }
+    const diagnostics = validSubGraphMappings()(graph)
+    expect(diagnostics).toHaveLength(1)
+    expect(diagnostics[0]?.message).toContain('non-existent inner node')
+  })
+
+  it('detects missing inner port', () => {
+    const graph: Graph<string, string> = {
+      nodes: [
+        {
+          id: 'compound',
+          data: '',
+          ports: [{ id: 'in', direction: 'input' }],
+          subGraph: {
+            innerGraph: {
+              nodes: [{ id: 'inner', data: '', ports: [{ id: 'p1', direction: 'input' }] }],
+              edges: [],
+            },
+            portMappings: [
+              { innerPortRef: { nodeId: 'inner', portId: 'missing' }, outerPortId: 'in' },
+            ],
+          },
+        },
+      ],
+      edges: [],
+    }
+    const diagnostics = validSubGraphMappings()(graph)
+    expect(diagnostics).toHaveLength(1)
+    expect(diagnostics[0]?.message).toContain('non-existent inner port')
+  })
+
+  it('skips nodes without subGraph', () => {
+    const graph: Graph<string, string> = {
+      nodes: [{ id: 'simple', data: '', ports: [] }],
+      edges: [],
+    }
+    const diagnostics = validSubGraphMappings()(graph)
+    expect(diagnostics).toHaveLength(0)
   })
 })
 

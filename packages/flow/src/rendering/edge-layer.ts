@@ -133,17 +133,30 @@ export function EdgeLayer<N, E>(
             const sy = ep.sourcePoint.y
             const tx = ep.targetPoint.x
             const ty = ep.targetPoint.y
+            const x = sx + (tx - sx) * p
+            const y = sy + (ty - sy) * p + off
+            let angle = 0
+            if (cfg.followPath) {
+              angle = (Math.atan2(ty - sy, tx - sx) * 180) / Math.PI
+              // Keep label readable (avoid upside-down text)
+              if (angle > 90) angle -= 180
+              if (angle < -90) angle += 180
+            }
             return {
               content: cfg.content,
-              x: sx + (tx - sx) * p,
-              y: sy + (ty - sy) * p + off,
+              x,
+              y,
               showBg: cfg.background !== false,
+              angle,
             }
           })
 
           return Ensure(labelInfo, (info) =>
             svg.g(
               attr.class('flow-edge-label-group'),
+              svgAttr.transform(
+                info.map((i) => (i.angle !== 0 ? `rotate(${i.angle}, ${i.x}, ${i.y})` : '')),
+              ),
               svg.rect(
                 attr.class('flow-edge-label-bg'),
                 attr.class(info.map((i): string => (i.showBg ? '' : 'flow-hidden'))),

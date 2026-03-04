@@ -164,5 +164,6 @@ export {
   requiredPorts,
   acyclic,
   validHierarchy,
+  validSubGraphMappings,
   compose,
 } from './validators/index'

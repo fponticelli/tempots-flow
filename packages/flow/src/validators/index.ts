@@ -203,6 +203,36 @@ export function validHierarchy<N, E>(): Validator<N, E> {
   }
 }
 
+export function validSubGraphMappings<N, E>(): Validator<N, E> {
+  return (graph) => {
+    const diagnostics: Diagnostic[] = []
+    for (const node of graph.nodes) {
+      if (!node.subGraph) continue
+      for (const mapping of node.subGraph.portMappings) {
+        const innerNode = node.subGraph.innerGraph.nodes.find(
+          (n) => n.id === mapping.innerPortRef.nodeId,
+        )
+        if (!innerNode) {
+          diagnostics.push({
+            severity: 'error',
+            message: `Sub-graph mapping references non-existent inner node "${mapping.innerPortRef.nodeId}"`,
+            target: { kind: 'node', nodeId: node.id },
+          })
+          continue
+        }
+        if (!innerNode.ports.find((p) => p.id === mapping.innerPortRef.portId)) {
+          diagnostics.push({
+            severity: 'error',
+            message: `Sub-graph mapping references non-existent inner port "${mapping.innerPortRef.portId}" on node "${mapping.innerPortRef.nodeId}"`,
+            target: { kind: 'node', nodeId: node.id },
+          })
+        }
+      }
+    }
+    return diagnostics
+  }
+}
+
 export function compose<N, E>(...validators: Validator<N, E>[]): Validator<N, E> {
   return (graph) => {
     const all: Diagnostic[] = []

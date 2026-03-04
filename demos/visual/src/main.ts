@@ -1161,6 +1161,29 @@ render(
         },
       ),
 
+      // Sub-graph breadcrumb (shown when navigated into a sub-graph)
+      Ensure(
+        flow.subGraphDepth.map((d): string | null => (d > 0 ? `Depth: ${d}` : null)),
+        (depthLabel) =>
+          html.span(
+            style.display('flex'),
+            style.alignItems('center'),
+            style.gap('6px'),
+            html.button(
+              '\u2190 Back',
+              style.padding('6px 12px'),
+              style.cursor('pointer'),
+              style.border('1px solid rgba(255, 200, 50, 0.4)'),
+              style.borderRadius('4px'),
+              style.background('rgba(255, 200, 50, 0.15)'),
+              style.color('rgba(255, 200, 50, 0.9)'),
+              style.fontWeight('600'),
+              on.click(() => flow.exitSubGraph()),
+            ),
+            html.span(style.fontSize('0.75em'), style.color('rgba(255, 200, 50, 0.6)'), depthLabel),
+          ),
+      ),
+
       Separator(),
 
       // Viewport controls
@@ -1207,6 +1230,29 @@ render(
       style.position('relative'),
 
       flow.renderable,
+
+      // Sub-graph depth indicator overlay
+      Ensure(
+        flow.subGraphDepth.map((d): string | null =>
+          d > 0 ? 'Inside sub-graph \u2014 double-click background or click Back to exit' : null,
+        ),
+        (hint) =>
+          html.div(
+            style.position('absolute'),
+            style.bottom('8px'),
+            style.left('50%'),
+            style.transform('translateX(-50%)'),
+            style.padding('4px 12px'),
+            style.borderRadius('4px'),
+            style.background('rgba(255, 200, 50, 0.15)'),
+            style.border('1px solid rgba(255, 200, 50, 0.3)'),
+            style.fontSize('0.75em'),
+            style.color('rgba(255, 200, 50, 0.8)'),
+            style.pointerEvents('none'),
+            style.zIndex('5'),
+            hint,
+          ),
+      ),
 
       // Per-node info panel (shows when a node is selected)
       NodeInfoPanel(),

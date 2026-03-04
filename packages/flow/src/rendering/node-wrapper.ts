@@ -34,6 +34,8 @@ export function NodeWrapper<N, E>(
   nodeRenderer?: NodeRenderer<N>,
   portRenderer?: PortRenderer,
   isExiting?: Signal<boolean>,
+  onNodeDoubleClick?: (node: GraphNode<N>, event: PointerEvent) => void,
+  diagnosticsSignal?: Signal<readonly Diagnostic[]>,
 ): TNode {
   const nodeId = nodeSignal.$.id
   const isSelected = computedOf(interactionState, nodeId)((s, id) => s.selectedNodeIds.has(id))
@@ -63,7 +65,18 @@ export function NodeWrapper<N, E>(
     isSelected,
     isHovered,
     isDragging,
-    diagnostics: signal([] as readonly Diagnostic[]),
+    diagnostics: diagnosticsSignal
+      ? (computedOf(
+          diagnosticsSignal,
+          nodeId,
+        )((ds, id) =>
+          ds.filter(
+            (d) =>
+              (d.target.kind === 'node' && d.target.nodeId === id) ||
+              (d.target.kind === 'port' && d.target.nodeId === id),
+          ),
+        ) as unknown as Signal<readonly Diagnostic[]>)
+      : signal([] as readonly Diagnostic[]),
     port: (portId: Value<string>) => {
       const pid = typeof portId === 'string' ? signal(portId) : portId
       const portIsConnected = computedOf(
@@ -96,6 +109,7 @@ export function NodeWrapper<N, E>(
     attr.class(isSelected.map((s): string => (s ? 'flow-node--selected' : ''))),
     attr.class(isHovered.map((h): string => (h ? 'flow-node--hovered' : ''))),
     attr.class(isDragging.map((d): string => (d ? 'flow-node--dragging' : ''))),
+    attr.class(nodeSignal.map((n): string => (n.subGraph ? 'flow-node--compound' : ''))),
     attr.class(transitioning.map((t): string => (t ? 'flow-node-wrapper--transitioning' : ''))),
     isExiting ? attr.class(isExiting.map((e): string => (e ? 'flow-node--exiting' : ''))) : null,
 
@@ -111,6 +125,12 @@ export function NodeWrapper<N, E>(
     on.pointerleave(() => {
       setHoveredNode(null)
     }),
+    onNodeDoubleClick
+      ? on.dblclick((e: MouseEvent) => {
+          e.stopPropagation()
+          onNodeDoubleClick(nodeSignal.value, e as PointerEvent)
+        })
+      : null,
 
     WithElement((el: HTMLElement) => {
       // Report initial dimensions (offsetWidth/Height are not affected by CSS transforms,

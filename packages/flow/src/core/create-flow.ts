@@ -1,5 +1,6 @@
 import { prop, computed } from '@tempots/core'
-import type { Signal } from '@tempots/core'
+import type { Signal, Prop } from '@tempots/core'
+import type { Graph } from '../types/graph'
 import type { Viewport, Dimensions, Position, PortPlacement } from '../types/layout'
 import type { Diagnostic } from '../types/validation'
 import type { FlowConfig, FlowInstance, BackgroundType } from '../types/config'
@@ -138,6 +139,8 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
   const nodePositionCache = new Map<string, Signal<Position>>()
   const nodeDimensionsCache = new Map<string, Signal<Dimensions>>()
   const nodeSelectedCache = new Map<string, Signal<boolean>>()
+  const nodeHoveredCache = new Map<string, Signal<boolean>>()
+  const nodeDiagnosticsCache = new Map<string, Signal<readonly Diagnostic[]>>()
 
   const DEFAULT_POS: Position = { x: 0, y: 0 }
   const DEFAULT_DIMS: Dimensions = { width: 180, height: 80 }
@@ -176,6 +179,20 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
       if (config.dragEndBehavior === 'relayout' && config.layout) {
         layoutEngine.setAlgorithm(config.layout)
         triggerLayoutTransition()
+      } else if (config.dragEndBehavior === 'settle' && config.layout) {
+        // Re-run layout but pin dragged nodes to their current positions
+        const currentPositions = layoutEngine.positions.value
+        const dims = layoutEngine.dimensions.value
+        const g = graphProp.value
+        const newPositions = config.layout.layout(g, dims, currentPositions)
+        // Merge: use current positions for dragged nodes, layout for others
+        const merged = new Map(newPositions)
+        for (const id of nodeIds) {
+          const pos = currentPositions.get(id)
+          if (pos) merged.set(id, pos)
+        }
+        layoutEngine.setAllPositions(merged)
+        triggerLayoutTransition()
       }
       originalDragEnd?.(nodeIds, positions)
     },
@@ -196,6 +213,56 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
   // --- Derived signals ---
   const selectedNodeIds = interactionManager.state.map((s) => s.selectedNodeIds)
   const selectedEdgeIds = interactionManager.state.map((s) => s.selectedEdgeIds)
+
+  // --- Sub-graph navigation stack ---
+  interface SubGraphFrame {
+    graph: Graph<N, E>
+    positions: ReadonlyMap<string, Position>
+    viewport: Viewport
+    compoundNodeId: string
+  }
+  const subGraphStack: SubGraphFrame[] = []
+  const subGraphDepthProp = prop(0)
+
+  function enterSubGraph(compoundNodeId: string) {
+    const g = graphProp.value
+    const node = g.nodes.find((n) => n.id === compoundNodeId)
+    if (!node?.subGraph) return
+
+    // Push current frame
+    subGraphStack.push({
+      graph: g,
+      positions: new Map(layoutEngine.positions.value),
+      viewport: viewportProp.value,
+      compoundNodeId,
+    })
+
+    // Swap to inner graph
+    ;(graphProp as Prop<Graph<N, E>>).set(node.subGraph.innerGraph as Graph<N, E>)
+    clearSelection()
+    subGraphDepthProp.set(subGraphStack.length)
+
+    // Re-layout and fit
+    if (config.layout) {
+      layoutEngine.setAlgorithm(config.layout)
+      triggerLayoutTransition()
+    }
+    requestAnimationFrame(() => fitView())
+    config.events?.onEnterSubGraph?.(compoundNodeId)
+  }
+
+  function exitSubGraph() {
+    if (subGraphStack.length === 0) return
+    const frame = subGraphStack.pop()!
+
+    // Restore parent graph, positions, viewport
+    ;(graphProp as Prop<Graph<N, E>>).set(frame.graph)
+    layoutEngine.setAllPositions(frame.positions)
+    viewportProp.set(frame.viewport)
+    clearSelection()
+    subGraphDepthProp.set(subGraphStack.length)
+    config.events?.onExitSubGraph?.(frame.compoundNodeId)
+  }
 
   // --- Dimension change handler ---
   function onDimensionsChange(nodeId: string, dims: Dimensions) {
@@ -545,6 +612,14 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     alignmentGuidesEnabled: config.alignmentGuides,
     visibleNodeIds,
     visibleEdgeIds,
+    onNodeDoubleClick: (node, event) => {
+      config.events?.onNodeDoubleClick?.(node, event)
+      if (node.subGraph) {
+        enterSubGraph(node.id)
+      }
+    },
+    onBackgroundDoubleClick: () => exitSubGraph(),
+    diagnostics,
   })
 
   // --- Instance API ---
@@ -584,7 +659,31 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
       return sig
     },
 
+    isNodeHovered(nodeId: string): Signal<boolean> {
+      let sig = nodeHoveredCache.get(nodeId)
+      if (!sig) {
+        sig = interactionManager.state.map((s) => s.hoveredNodeId === nodeId)
+        nodeHoveredCache.set(nodeId, sig)
+      }
+      return sig
+    },
+
     diagnostics,
+
+    nodeDiagnostics(nodeId: string): Signal<readonly Diagnostic[]> {
+      let sig = nodeDiagnosticsCache.get(nodeId)
+      if (!sig) {
+        sig = diagnostics.map((ds) =>
+          ds.filter(
+            (d) =>
+              (d.target.kind === 'node' && d.target.nodeId === nodeId) ||
+              (d.target.kind === 'port' && d.target.nodeId === nodeId),
+          ),
+        ) as unknown as Signal<readonly Diagnostic[]>
+        nodeDiagnosticsCache.set(nodeId, sig)
+      }
+      return sig
+    },
 
     updateGraph,
 
@@ -663,6 +762,10 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     setInteractionLocked,
 
     isAnimating,
+
+    subGraphDepth: subGraphDepthProp,
+    enterSubGraph,
+    exitSubGraph,
 
     renderable,
 
