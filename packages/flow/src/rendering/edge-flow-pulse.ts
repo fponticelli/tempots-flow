@@ -1,4 +1,4 @@
-import { svg, attr, svgAttr } from '@tempots/dom'
+import { svg, attr, svgAttr, WithElement, OnDispose } from '@tempots/dom'
 import type { TNode } from '@tempots/dom'
 import type { Signal } from '@tempots/core'
 
@@ -7,15 +7,15 @@ export interface EdgeFlowPulseConfig {
   readonly color?: string
   /** Width of the pulse path. Default: 3 */
   readonly width?: number
-  /** Animation speed CSS value. Default: '1.5s' */
-  readonly speed?: string
+  /** Speed in pixels per second. Default: 40 */
+  readonly speed?: number
   /** Dash pattern. Default: '12 8' */
   readonly dashArray?: string
 }
 
 /**
  * Renders a pulsing dash animation along an edge path.
- * Uses CSS animation for the dash offset.
+ * Uses requestAnimationFrame for seamless looping.
  */
 export function EdgeFlowPulse(
   pathD: Signal<string>,
@@ -24,8 +24,11 @@ export function EdgeFlowPulse(
 ): TNode {
   const color = config?.color ?? 'var(--flow-edge-color, #53a8ff)'
   const width = config?.width ?? 3
-  const pulseSpeed = config?.speed ?? '1.5s'
+  const speed = config?.speed ?? 40
   const dashArray = config?.dashArray ?? '12 8'
+
+  // Compute pattern length from dashArray so offset wraps seamlessly
+  const patternLength = dashArray.split(/[\s,]+/).reduce((sum, v) => sum + (parseFloat(v) || 0), 0)
 
   return svg.path(
     attr.class('flow-edge-flow-pulse'),
@@ -35,9 +38,29 @@ export function EdgeFlowPulse(
     svgAttr['stroke-width'](String(width)),
     svgAttr['stroke-dasharray'](dashArray),
     svgAttr['stroke-linecap']('round'),
-    svgAttr.opacity('0.6'),
-    // The CSS animation drives the dashoffset
-    attr.style(`animation: flow-edge-pulse ${pulseSpeed} linear infinite`),
+    svgAttr.opacity('0.85'),
+    WithElement((el: Element) => {
+      let rafId = 0
+      let lastTime = 0
+      let offset = 0
+
+      function animate(time: number) {
+        if (lastTime === 0) lastTime = time
+        const dt = (time - lastTime) / 1000
+        lastTime = time
+
+        offset = (offset + speed * dt) % patternLength
+        el.setAttribute('stroke-dashoffset', String(-offset))
+
+        rafId = requestAnimationFrame(animate)
+      }
+
+      rafId = requestAnimationFrame(animate)
+
+      return OnDispose(() => {
+        cancelAnimationFrame(rafId)
+      })
+    }),
   )
 }
 

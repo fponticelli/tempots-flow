@@ -1,14 +1,17 @@
-import { render, html, on, style } from '@tempots/dom'
+import { render, html, svg, attr, svgAttr, dataAttr, on, style, When } from '@tempots/dom'
 import type { TNode } from '@tempots/dom'
 import type { Signal } from '@tempots/core'
 import { prop, type Prop } from '@tempots/core'
-import { createFlow } from '@tempots/flow'
+import { createFlow, EdgeFlowParticle, EdgeFlowPulse } from '@tempots/flow'
 import type {
   Graph,
+  GraphEdge,
   LayoutAlgorithm,
   BackgroundType,
   EdgeRoutingStrategy,
   PortPlacement,
+  EdgeRenderer,
+  EdgeRenderContext,
 } from '@tempots/flow'
 import {
   hierarchicalLayout,
@@ -129,6 +132,48 @@ const routingStrategies: Record<string, EdgeRoutingStrategy> = {
   Orthogonal: createOrthogonalStrategy(),
 }
 
+type EdgeEffect = 'none' | 'particle' | 'pulse'
+
+const activeEffect: Prop<EdgeEffect> = prop<EdgeEffect>('none')
+
+const pipelineEdgeRenderer: EdgeRenderer<string> = (
+  _edge: Signal<GraphEdge<string>>,
+  context: EdgeRenderContext,
+): TNode => {
+  const d = context.path.map((ep) => ep.d)
+
+  return svg.g(
+    attr.class('flow-edge-group'),
+    attr.class(context.isSelected.map((s): string => (s ? 'flow-edge--selected' : ''))),
+    attr.class(context.isHovered.map((h): string => (h ? 'flow-edge--hovered' : ''))),
+    dataAttr.edgeid!(context.path.map((ep) => ep.edgeId)),
+
+    svg.path(svgAttr.d(d), attr.class('flow-edge')),
+
+    When(
+      activeEffect.map((e) => e === 'particle'),
+      () =>
+        EdgeFlowParticle(d, {
+          count: 5,
+          speed: 120,
+          radius: 4,
+          color: '#53d8ff',
+        }),
+    ),
+
+    When(
+      activeEffect.map((e) => e === 'pulse'),
+      () =>
+        EdgeFlowPulse(d, context.path.value.edgeId, {
+          speed: 60,
+          width: 4,
+          dashArray: '16 10',
+          color: '#53d8ff',
+        }),
+    ),
+  )
+}
+
 function ToolbarButton(label: TNode, isActive: Signal<boolean>, onClick: () => void) {
   return html.button(
     label,
@@ -148,6 +193,7 @@ function ToolbarButton(label: TNode, isActive: Signal<boolean>, onClick: () => v
 
 const flow = createFlow({
   graph: prop(graph),
+  edgeRenderer: pipelineEdgeRenderer,
   layout: hierarchicalLayout({ direction: 'LR', layerSpacing: 250, nodeSpacing: 60 }),
   viewport: { x: 30, y: 30, zoom: 1 },
   layoutTransitionDuration: 300,
@@ -253,6 +299,20 @@ render(
             activePortPlacement.set(placement)
             flow.setPortPlacement(placement)
           },
+        ),
+      ),
+
+      html.span(
+        style.width('1px'),
+        style.background('rgba(255,255,255,0.15)'),
+        style.alignSelf('stretch'),
+      ),
+
+      ...(['none', 'particle', 'pulse'] as const).map((effect) =>
+        ToolbarButton(
+          effect === 'none' ? 'No Effect' : effect === 'particle' ? 'Particles' : 'Pulse',
+          activeEffect.map((e) => e === effect),
+          () => activeEffect.set(effect),
         ),
       ),
     ),

@@ -688,15 +688,10 @@
   animation: flow-edge-dash var(--flow-edge-flow-speed) linear infinite;
 }
 
-/* Edge flow pulse animation */
-@keyframes flow-edge-pulse {
-  to {
-    stroke-dashoffset: -40;
-  }
-}
-
+/* Edge flow pulse */
 .flow-edge-flow-pulse {
   pointer-events: none;
+  filter: drop-shadow(0 0 3px currentColor);
 }
 
 /* Edge flow particles */

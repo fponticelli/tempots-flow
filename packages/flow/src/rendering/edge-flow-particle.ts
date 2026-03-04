@@ -26,6 +26,29 @@ export function EdgeFlowParticle(pathD: Signal<string>, config?: EdgeFlowParticl
   return svg.g(
     attr.class('flow-edge-flow-particles'),
     WithElement((g: HTMLElement) => {
+      // Create SVG glow filter
+      const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs')
+      const filter = document.createElementNS('http://www.w3.org/2000/svg', 'filter')
+      filter.setAttribute('id', 'flow-particle-glow')
+      filter.setAttribute('x', '-50%')
+      filter.setAttribute('y', '-50%')
+      filter.setAttribute('width', '200%')
+      filter.setAttribute('height', '200%')
+      const blur = document.createElementNS('http://www.w3.org/2000/svg', 'feGaussianBlur')
+      blur.setAttribute('stdDeviation', '2')
+      blur.setAttribute('result', 'glow')
+      const merge = document.createElementNS('http://www.w3.org/2000/svg', 'feMerge')
+      const mn1 = document.createElementNS('http://www.w3.org/2000/svg', 'feMergeNode')
+      mn1.setAttribute('in', 'glow')
+      const mn2 = document.createElementNS('http://www.w3.org/2000/svg', 'feMergeNode')
+      mn2.setAttribute('in', 'SourceGraphic')
+      merge.appendChild(mn1)
+      merge.appendChild(mn2)
+      filter.appendChild(blur)
+      filter.appendChild(merge)
+      defs.appendChild(filter)
+      g.appendChild(defs)
+
       // Create a hidden path element to get length
       const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path')
       pathEl.style.display = 'none'
@@ -37,7 +60,8 @@ export function EdgeFlowParticle(pathD: Signal<string>, config?: EdgeFlowParticl
         const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
         circle.setAttribute('r', String(radius))
         circle.setAttribute('fill', color)
-        circle.setAttribute('opacity', '0.8')
+        circle.setAttribute('opacity', '0.9')
+        circle.setAttribute('filter', 'url(#flow-particle-glow)')
         g.appendChild(circle)
         circles.push(circle)
       }

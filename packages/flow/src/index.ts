@@ -133,6 +133,10 @@ export type { EdgeFlowParticleConfig } from './rendering/edge-flow-particle'
 export { EdgeFlowPulse, createEdgeFlowPulse } from './rendering/edge-flow-pulse'
 export type { EdgeFlowPulseConfig } from './rendering/edge-flow-pulse'
 
+// Transition utilities
+export { TransitionKeyedForEach } from './rendering/transition-keyed-list'
+export type { TransitionKeyedForEachOptions } from './rendering/transition-keyed-list'
+
 // Alignment guides
 export type { AlignmentGuide, AlignmentResult } from './interaction/alignment-guides'
 export { computeAlignmentGuides } from './interaction/alignment-guides'

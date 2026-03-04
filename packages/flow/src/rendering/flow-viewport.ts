@@ -21,7 +21,7 @@ import type {
   EdgeMarkerConfig,
   EdgeLabelConfig,
 } from '../types/config'
-import type { EnterAnimation } from '../animation/animation-config'
+import type { EnterAnimation, ExitAnimation } from '../animation/animation-config'
 import type { FlowTheme } from '../types/theme'
 import type { InteractionManager, InteractionTarget } from '../interaction/interaction-manager'
 import { TransformLayer } from './transform-layer'
@@ -76,6 +76,8 @@ export interface FlowViewportOptions<N, E> {
   readonly onTouchStart?: (e: TouchEvent) => void
   readonly onTouchMove?: (e: TouchEvent) => void
   readonly onTouchEnd?: (e: TouchEvent) => void
+  readonly exitAnimation?: ExitAnimation
+  readonly exitDuration?: number
   readonly alignmentGuidesEnabled?: boolean
 }
 
@@ -124,10 +126,16 @@ export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderab
       ? `flow--enter-${options.enterAnimation}`
       : ''
 
+  const exitClass =
+    options.animationsEnabled && options.exitAnimation && options.exitAnimation !== 'none'
+      ? `flow--exit-${options.exitAnimation}`
+      : ''
+
   return html.div(
     attr.class('flow-viewport'),
     attr.class(allowManualPositioning.map((v): string => (v ? 'flow--manual-positioning' : ''))),
     attr.class(enterClass),
+    exitClass ? attr.class(exitClass) : null,
     options.theme?.containerClass ? attr.class(options.theme.containerClass) : null,
     options.interactionLocked
       ? attr.class(options.interactionLocked.map((l): string => (l ? 'flow-viewport--locked' : '')))
@@ -232,6 +240,8 @@ export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderab
         transitioning,
         nodeRenderer,
         options.portRenderer,
+        options.exitAnimation,
+        options.exitDuration,
       ),
       ConnectionPreview(interactionState, edgeRouting),
       SelectionBox(interactionState),

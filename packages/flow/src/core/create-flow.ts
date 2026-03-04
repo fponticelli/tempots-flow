@@ -495,6 +495,10 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     onTouchStart: touchHandler.onTouchStart,
     onTouchMove: touchHandler.onTouchMove,
     onTouchEnd: touchHandler.onTouchEnd,
+    exitAnimation: animationConfig.enterExit.enabled ? animationConfig.enterExit.exit : undefined,
+    exitDuration: animationConfig.enterExit.enabled
+      ? animationConfig.enterExit.duration
+      : undefined,
     alignmentGuidesEnabled: config.alignmentGuides,
   })
 

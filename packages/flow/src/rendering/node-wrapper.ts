@@ -33,6 +33,7 @@ export function NodeWrapper<N, E>(
   transitioning: Signal<boolean>,
   nodeRenderer?: NodeRenderer<N>,
   portRenderer?: PortRenderer,
+  isExiting?: Signal<boolean>,
 ): TNode {
   const nodeId = nodeSignal.$.id
   const isSelected = computedOf(interactionState, nodeId)((s, id) => s.selectedNodeIds.has(id))
@@ -96,6 +97,7 @@ export function NodeWrapper<N, E>(
     attr.class(isHovered.map((h): string => (h ? 'flow-node--hovered' : ''))),
     attr.class(isDragging.map((d): string => (d ? 'flow-node--dragging' : ''))),
     attr.class(transitioning.map((t): string => (t ? 'flow-node-wrapper--transitioning' : ''))),
+    isExiting ? attr.class(isExiting.map((e): string => (e ? 'flow-node--exiting' : ''))) : null,
 
     style.transform(position.map((p) => `translate(${p.x}px, ${p.y}px)`)),
 

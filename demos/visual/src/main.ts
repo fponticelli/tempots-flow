@@ -2,7 +2,7 @@ import { render, html, svg, attr, svgAttr, style, on, computedOf, ForEach } from
 import type { TNode } from '@tempots/dom'
 import type { Signal } from '@tempots/core'
 import { prop, type Prop } from '@tempots/core'
-import { createFlow, createEdgeOverlay } from '@tempots/flow'
+import { createFlow, createEdgeOverlay, EdgeFlowParticle } from '@tempots/flow'
 import type {
   Graph,
   GraphNode,
@@ -806,6 +806,19 @@ const visualEdgeRenderer: EdgeRenderer<VisualEdgeData> = (
         )((s, c): string => (s ? 'stroke: #ffffff' : `stroke: ${c}`)),
       ),
     ),
+
+    // Data flow particles colored per type
+    EdgeFlowParticle(d, {
+      count: 4,
+      speed: 100,
+      radius: 3,
+      color:
+        edge.value.data.dataType === 'float'
+          ? '#f0a500'
+          : edge.value.data.dataType === 'color'
+            ? '#4caf50'
+            : '#42a5f5',
+    }),
 
     // Label overlay at center
     createEdgeOverlay(context.path, {
