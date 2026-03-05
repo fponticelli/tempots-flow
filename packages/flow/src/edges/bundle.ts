@@ -30,8 +30,6 @@ export interface BundlingOptions {
   readonly avoidObstacles?: boolean
   /** Clearance around obstacles in px. Default: 20 */
   readonly nodePadding?: number
-  /** Resolution (px) used to bucket edges into bundles. Default: 10 */
-  readonly bundleKeyResolution?: number
 }
 
 interface BundleEdge {
@@ -205,7 +203,7 @@ function computeBundledPaths(
     const cp2x = natCp2x + (centroidX - natCp2x) * strength + fan.perpX * fanOffset
     const cp2y = natCp2y + (centroidY - natCp2y) * strength + fan.perpY * fanOffset
 
-    const polyline = [
+    const rawPolyline = [
       { x: edge.source.x, y: edge.source.y },
       { x: ex, y: ey },
       ...approximateBezierAsPolyline(
@@ -218,14 +216,13 @@ function computeBundledPaths(
       { x: edge.target.x, y: edge.target.y },
     ]
 
+    const smoothPath = catmullRomThroughWaypoints(rawPolyline, 0.35)
+    const sampleCount = Math.min(64, Math.max(20, Math.ceil(rawPolyline.length * 2)))
+    const smoothPolyline = approximatePathAsPolyline(smoothPath, sampleCount)
+
     result.set(edge.edgeId, {
-      path: [
-        `M ${edge.source.x} ${edge.source.y}`,
-        `L ${ex} ${ey}`,
-        `C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${nx} ${ny}`,
-        `L ${edge.target.x} ${edge.target.y}`,
-      ].join(' '),
-      polyline,
+      path: smoothPath,
+      polyline: smoothPolyline,
     })
   }
 
@@ -251,6 +248,7 @@ export function createBundledStrategy(options: BundlingOptions = {}): EdgeRoutin
       const result = new Map<string, string>()
       const builtData = new Map<string, { path: string; polyline: Point[] }>()
       const fanMeta = new Map<string, { perpX: number; perpY: number; fanOffset: number }>()
+      const groupFans = new Map<string, FanGeometry>()
 
       // Group edges by source-target node pair
       const groups = new Map<string, BundleEdge[]>()
@@ -266,6 +264,8 @@ export function createBundledStrategy(options: BundlingOptions = {}): EdgeRoutin
 
       for (const group of groups.values()) {
         const fan = computeFanGeometry(group, fanDistance, exitDist)
+        const key = bundleKey(group[0]!)
+        groupFans.set(key, fan)
         if (group.length < minBundleSize) {
           for (const edge of group) {
             const ob = orthogonalBezier(edge.source, edge.target, exitDist)
@@ -289,62 +289,119 @@ export function createBundledStrategy(options: BundlingOptions = {}): EdgeRoutin
         }
       }
 
-      for (const edge of params.edges) {
-        const data = builtData.get(edge.edgeId)
-        if (!data) continue
-        const sourceNodeId = edge.sourceNodeId ?? edge.edgeId
-        const targetNodeId = edge.targetNodeId ?? edge.edgeId
+      // If no obstacle avoidance is needed, just return built paths
+      if (!avoidObstacles || !params.obstacles || params.obstacles.length === 0) {
+        for (const [edgeId, data] of builtData) {
+          result.set(edgeId, data.path)
+        }
+        return result
+      }
 
-        if (avoidObstacles && params.obstacles && params.obstacles.length > 0) {
-          const collisionObs = buildEdgeObstacles(params.obstacles, sourceNodeId, targetNodeId, 0)
-          const routingObs = buildEdgeObstacles(params.obstacles, sourceNodeId, targetNodeId, nodePadding)
-          if (collisionObs.length > 0 && polylineHitsObstacle(data.polyline, collisionObs, 0)) {
-            const fan = fanMeta.get(edge.edgeId)
-            let rerouted: string | null = null
-
-            if (fan) {
-              const waypoints = computeOrthogonalWaypoints(
-                edge.source,
-                edge.target,
-                routingObs,
-                exitDist,
-                DEFAULT_MAX_ITERATIONS,
-                0,
-              )
-
-              const shifted = waypoints.map((p, i) =>
-                i === 0 || i === waypoints.length - 1
-                  ? p
-                  : {
-                      x: p.x + fan.perpX * fan.fanOffset,
-                      y: p.y + fan.perpY * fan.fanOffset,
-                    },
-              )
-
-              const smooth = catmullRomThroughWaypoints(shifted, 0.35)
-              const approx = approximatePathAsPolyline(smooth, 12)
-              if (approx.length >= 2 && !polylineHitsObstacle(approx, routingObs, 0)) {
-                rerouted = smooth
-              }
-            }
-
-            // Fallback: single-edge smooth reroute (drops bundling if needed)
-            if (!rerouted) {
-              rerouted = computeReroutedBezier(
-                edge.source,
-                edge.target,
-                routingObs,
-                exitDist,
-                nodePadding,
-              )
-            }
-
-            result.set(edge.edgeId, rerouted)
-            continue
+      // Obstacle-aware pass, but keep bundles together when detouring
+      for (const [key, group] of groups) {
+        const fan = groupFans.get(key)
+        for (const edge of group) {
+          const data = builtData.get(edge.edgeId)
+          if (data) {
+            result.set(edge.edgeId, data.path)
           }
         }
+        if (!fan) continue
 
-        result.set(edge.edgeId, data.path)
+        const endpointIds = new Set<string>()
+        for (const e of group) {
+          endpointIds.add(e.sourceNodeId)
+          endpointIds.add(e.targetNodeId)
+        }
+
+        const collisionObs = buildEdgeObstacles(
+          params.obstacles.filter((o) => !endpointIds.has(o.nodeId)),
+          '__none__',
+          '__none__',
+          0,
+        )
+        const routingObs = buildEdgeObstacles(
+          params.obstacles.filter((o) => !endpointIds.has(o.nodeId)),
+          '__none__',
+          '__none__',
+          nodePadding,
+        )
+
+        let groupCollides = false
+        for (const e of group) {
+          const data = builtData.get(e.edgeId)
+          if (data && polylineHitsObstacle(data.polyline, collisionObs, 0)) {
+            groupCollides = true
+            break
+          }
+        }
+        if (!groupCollides) continue
+
+        // Compute a shared spine between averaged endpoints, then fan out along it.
+        const avgSource: ComputedPortPosition = {
+          x: group.reduce((acc, e) => acc + e.source.x, 0) / group.length,
+          y: group.reduce((acc, e) => acc + e.source.y, 0) / group.length,
+          side: group[0]!.source.side,
+        }
+        const avgTarget: ComputedPortPosition = {
+          x: group.reduce((acc, e) => acc + e.target.x, 0) / group.length,
+          y: group.reduce((acc, e) => acc + e.target.y, 0) / group.length,
+          side: group[0]!.target.side,
+        }
+
+        const spine = computeOrthogonalWaypoints(
+          avgSource,
+          avgTarget,
+          routingObs,
+          exitDist,
+          DEFAULT_MAX_ITERATIONS,
+          0,
+        )
+
+        if (spine.length < 2) {
+          // Fallback to per-edge reroute if spine can't be built
+          for (const e of group) {
+            const rerouted = computeReroutedBezier(
+              e.source,
+              e.target,
+              routingObs,
+              exitDist,
+              nodePadding,
+            )
+            result.set(e.edgeId, rerouted)
+          }
+          continue
+        }
+
+        for (const e of group) {
+          const meta = fanMeta.get(e.edgeId)
+          const fanOffset = meta?.fanOffset ?? 0
+          const shifted = spine.map((p, i) =>
+            i === 0
+              ? { x: e.source.x, y: e.source.y }
+              : i === spine.length - 1
+                ? { x: e.target.x, y: e.target.y }
+                : { x: p.x + fan.perpX * fanOffset, y: p.y + fan.perpY * fanOffset },
+          )
+
+          const smooth = catmullRomThroughWaypoints(shifted, 0.35)
+          const sampleCount = Math.min(32, Math.max(8, Math.ceil(shifted.length * 4)))
+          const approx = approximatePathAsPolyline(smooth, sampleCount)
+
+          if (approx.length >= 2 && !polylineHitsObstacle(approx, routingObs, 0)) {
+            result.set(e.edgeId, smooth)
+          } else {
+            // Last resort: single-edge reroute
+            const fallback = computeReroutedBezier(
+              e.source,
+              e.target,
+              routingObs,
+              exitDist,
+              nodePadding,
+            )
+            result.set(e.edgeId, fallback)
+          }
+        }
       }
 
       return result

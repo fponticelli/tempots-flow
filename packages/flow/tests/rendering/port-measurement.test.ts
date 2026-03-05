@@ -5,9 +5,7 @@ import type { PortOffset, ComputedPortPosition, PortSide } from '../../src/types
  * Reproduces the port-dot measurement logic from node-wrapper.ts.
  * Extracted here so we can test with controlled DOM geometry.
  */
-function measurePortDots(
-  el: HTMLElement,
-): Map<string, PortOffset> {
+function measurePortDots(el: HTMLElement): Map<string, PortOffset> {
   const offsets = new Map<string, PortOffset>()
   const dots = el.querySelectorAll<HTMLElement>('.flow-port-dot')
   for (const dot of dots) {
@@ -93,7 +91,12 @@ function buildMockNodeElement(
   nodeRect: MockRect,
   nodeW: number,
   nodeH: number,
-  ports: { id: string; direction: string; dotScreenCenter: { x: number; y: number }; dotSize?: number }[],
+  ports: {
+    id: string
+    direction: string
+    dotScreenCenter: { x: number; y: number }
+    dotSize?: number
+  }[],
 ): HTMLElement {
   const wrapper = document.createElement('div')
   wrapper.className = 'flow-node-wrapper'
@@ -153,8 +156,8 @@ describe('Port dot measurement → edge endpoint pipeline', () => {
       // Input port dot is at the left edge of the node.
       // Port dot center in flow-space: (nodeFlowPos.x - 11, nodeFlowPos.y + 50)
       // That means offset from wrapper top-left = (-11, 50)
-      const dotFlowX = nodeFlowPos.x - 11  // 11px left of wrapper left edge
-      const dotFlowY = nodeFlowPos.y + 50  // 50px below wrapper top
+      const dotFlowX = nodeFlowPos.x - 11 // 11px left of wrapper left edge
+      const dotFlowY = nodeFlowPos.y + 50 // 50px below wrapper top
 
       const dotScreenCenter = {
         x: viewportOffset.x + dotFlowX * zoom,

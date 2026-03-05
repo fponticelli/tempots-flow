@@ -77,7 +77,9 @@ test.describe('Port dot ↔ edge endpoint alignment', () => {
       }
 
       // Parse the first and last point from an SVG path `d` attribute
-      function parseEndpoints(d: string): { start: { x: number; y: number }; end: { x: number; y: number } } | null {
+      function parseEndpoints(
+        d: string,
+      ): { start: { x: number; y: number }; end: { x: number; y: number } } | null {
         // Match M x y at the start
         const mMatch = d.match(/^M\s+([-\d.]+)\s+([-\d.]+)/)
         if (!mMatch) return null
@@ -147,8 +149,14 @@ test.describe('Port dot ↔ edge endpoint alignment', () => {
               end: label,
               portId,
               nodeId,
-              dotScreen: { x: Math.round(bestCenter.x * 10) / 10, y: Math.round(bestCenter.y * 10) / 10 },
-              edgeScreen: { x: Math.round(edgeScreen.x * 10) / 10, y: Math.round(edgeScreen.y * 10) / 10 },
+              dotScreen: {
+                x: Math.round(bestCenter.x * 10) / 10,
+                y: Math.round(bestCenter.y * 10) / 10,
+              },
+              edgeScreen: {
+                x: Math.round(edgeScreen.x * 10) / 10,
+                y: Math.round(edgeScreen.y * 10) / 10,
+              },
               delta: Math.round(bestDist * 10) / 10,
             })
           }
@@ -173,7 +181,9 @@ test.describe('Port dot ↔ edge endpoint alignment', () => {
     }
 
     // The test fails if ANY edge endpoint is more than 3px from its nearest port dot
-    expect(mismatches.length, `${mismatches.length} edge endpoints misaligned with port dots`).toBe(0)
+    expect(mismatches.length, `${mismatches.length} edge endpoints misaligned with port dots`).toBe(
+      0,
+    )
   })
 
   test('compare signal data with DOM and SVG', async ({ page }) => {
@@ -183,21 +193,45 @@ test.describe('Port dot ↔ edge endpoint alignment', () => {
 
     const diagnostics = await page.evaluate(() => {
       const flow = (window as unknown as Record<string, unknown>).__FLOW__ as {
-        graph: { value: { nodes: { id: string; ports: { id: string; direction: string }[] }[]; edges: { id: string; source: { nodeId: string; portId: string }; target: { nodeId: string; portId: string } }[] } }
+        graph: {
+          value: {
+            nodes: { id: string; ports: { id: string; direction: string }[] }[]
+            edges: {
+              id: string
+              source: { nodeId: string; portId: string }
+              target: { nodeId: string; portId: string }
+            }[]
+          }
+        }
         getNodePosition: (id: string) => { value: { x: number; y: number } }
         getNodeDimensions: (id: string) => { value: { width: number; height: number } }
-        edgePaths: { value: { edgeId: string; d: string; sourcePoint: { x: number; y: number; side: string }; targetPoint: { x: number; y: number; side: string } }[] }
-        portOffsets: { value: ReadonlyMap<string, ReadonlyMap<string, { offsetX: number; offsetY: number; side: string }>> }
+        edgePaths: {
+          value: {
+            edgeId: string
+            d: string
+            sourcePoint: { x: number; y: number; side: string }
+            targetPoint: { x: number; y: number; side: string }
+          }[]
+        }
+        portOffsets: {
+          value: ReadonlyMap<
+            string,
+            ReadonlyMap<string, { offsetX: number; offsetY: number; side: string }>
+          >
+        }
       }
       if (!flow) return { error: 'flow not found on window' }
 
       const g = flow.graph.value
-      const nodeData: Record<string, {
-        signalPos: { x: number; y: number }
-        signalDims: { width: number; height: number }
-        cssPos: { x: number; y: number } | null
-        domDims: { width: number; height: number } | null
-      }> = {}
+      const nodeData: Record<
+        string,
+        {
+          signalPos: { x: number; y: number }
+          signalDims: { width: number; height: number }
+          cssPos: { x: number; y: number } | null
+          domDims: { width: number; height: number } | null
+        }
+      > = {}
 
       // Get signal positions vs CSS transform positions
       for (const node of g.nodes) {
@@ -229,7 +263,7 @@ test.describe('Port dot ↔ edge endpoint alignment', () => {
       }
 
       // Get edge path data from signal
-      const edgeData = flow.edgePaths.value.map(ep => ({
+      const edgeData = flow.edgePaths.value.map((ep) => ({
         edgeId: ep.edgeId,
         sourcePoint: ep.sourcePoint,
         targetPoint: ep.targetPoint,
@@ -239,10 +273,12 @@ test.describe('Port dot ↔ edge endpoint alignment', () => {
         })(),
         dEnd: (() => {
           const nums = ep.d.match(/[-\d.]+/g)
-          return nums && nums.length >= 4 ? { x: parseFloat(nums[nums.length - 2]!), y: parseFloat(nums[nums.length - 1]!) } : null
+          return nums && nums.length >= 4
+            ? { x: parseFloat(nums[nums.length - 2]!), y: parseFloat(nums[nums.length - 1]!) }
+            : null
         })(),
-        source: g.edges.find(e => e.id === ep.edgeId)?.source,
-        target: g.edges.find(e => e.id === ep.edgeId)?.target,
+        source: g.edges.find((e) => e.id === ep.edgeId)?.source,
+        target: g.edges.find((e) => e.id === ep.edgeId)?.target,
       }))
 
       // Get port dot positions in flow-space from DOM
@@ -250,10 +286,15 @@ test.describe('Port dot ↔ edge endpoint alignment', () => {
       for (const node of g.nodes) {
         const info = nodeData[node.id]
         if (!info?.cssPos) continue
-        const wrapper = Array.from(document.querySelectorAll<HTMLElement>('.flow-node-wrapper')).find(w => {
+        const wrapper = Array.from(
+          document.querySelectorAll<HTMLElement>('.flow-node-wrapper'),
+        ).find((w) => {
           const m = w.style.transform.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/)
           if (!m) return false
-          return Math.abs(parseFloat(m[1]!) - info.signalPos.x) < 1 && Math.abs(parseFloat(m[2]!) - info.signalPos.y) < 1
+          return (
+            Math.abs(parseFloat(m[1]!) - info.signalPos.x) < 1 &&
+            Math.abs(parseFloat(m[2]!) - info.signalPos.y) < 1
+          )
         })
         if (!wrapper) continue
         const wrapperRect = wrapper.getBoundingClientRect()
@@ -273,7 +314,10 @@ test.describe('Port dot ↔ edge endpoint alignment', () => {
       }
 
       // Get stored port offsets from signal
-      const storedPortOffsets: Record<string, Record<string, { offsetX: number; offsetY: number; side: string }>> = {}
+      const storedPortOffsets: Record<
+        string,
+        Record<string, { offsetX: number; offsetY: number; side: string }>
+      > = {}
       const offsets = flow.portOffsets.value
       for (const [nodeId, portMap] of offsets) {
         const ports: Record<string, { offsetX: number; offsetY: number; side: string }> = {}
@@ -290,14 +334,19 @@ test.describe('Port dot ↔ edge endpoint alignment', () => {
         portClassCheck.push({
           portId: pid,
           classes: portEl.className,
-          hasDirection: portEl.classList.contains('flow-port--input') || portEl.classList.contains('flow-port--output'),
+          hasDirection:
+            portEl.classList.contains('flow-port--input') ||
+            portEl.classList.contains('flow-port--output'),
         })
       }
 
       // Test: trigger a re-measurement by programmatically calling it
       // We can't access measurePortDots directly, but we can force a ResizeObserver
       // by temporarily changing node wrapper dimensions
-      const remeasuredOffsets: Record<string, Record<string, { offsetX: number; offsetY: number }>> = {}
+      const remeasuredOffsets: Record<
+        string,
+        Record<string, { offsetX: number; offsetY: number }>
+      > = {}
       for (const wrapper of document.querySelectorAll<HTMLElement>('.flow-node-wrapper')) {
         const header = wrapper.querySelector('.flow-node-header')
         const nodeLabel = header?.textContent?.trim() ?? 'unknown'
@@ -318,14 +367,25 @@ test.describe('Port dot ↔ edge endpoint alignment', () => {
         for (const node of g.nodes) {
           const sp = flow.getNodePosition(node.id).value
           const m = wrapper.style.transform.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/)
-          if (m && Math.abs(parseFloat(m[1]!) - sp.x) < 1 && Math.abs(parseFloat(m[2]!) - sp.y) < 1) {
+          if (
+            m &&
+            Math.abs(parseFloat(m[1]!) - sp.x) < 1 &&
+            Math.abs(parseFloat(m[2]!) - sp.y) < 1
+          ) {
             remeasuredOffsets[node.id] = ports
             break
           }
         }
       }
 
-      return { nodeData, edgeData, portDotFlowPositions, storedPortOffsets, portClassCheck, remeasuredOffsets }
+      return {
+        nodeData,
+        edgeData,
+        portDotFlowPositions,
+        storedPortOffsets,
+        portClassCheck,
+        remeasuredOffsets,
+      }
     })
 
     if ('error' in diagnostics) {
@@ -367,32 +427,50 @@ test.describe('Port dot ↔ edge endpoint alignment', () => {
         console.log(
           `    ${portId}: stored=(${s ? s.offsetX.toFixed(1) + ',' + s.offsetY.toFixed(1) + ' ' + s.side : 'N/A'})`,
           `dom=(${domOff ? domOff.x.toFixed(1) + ',' + domOff.y.toFixed(1) : 'N/A'})`,
-          s && domOff ? `delta=(${(s.offsetX - domOff.x).toFixed(1)}, ${(s.offsetY - domOff.y).toFixed(1)})` : '',
+          s && domOff
+            ? `delta=(${(s.offsetX - domOff.x).toFixed(1)}, ${(s.offsetY - domOff.y).toFixed(1)})`
+            : '',
         )
       }
     }
 
     console.log('\n--- Edge Source/Target Points vs Port Dot Positions ---')
     for (const edge of diagnostics.edgeData) {
-      const srcPortPos = diagnostics.portDotFlowPositions[edge.source?.nodeId ?? '']?.[edge.source?.portId ?? '']
-      const tgtPortPos = diagnostics.portDotFlowPositions[edge.target?.nodeId ?? '']?.[edge.target?.portId ?? '']
+      const srcPortPos =
+        diagnostics.portDotFlowPositions[edge.source?.nodeId ?? '']?.[edge.source?.portId ?? '']
+      const tgtPortPos =
+        diagnostics.portDotFlowPositions[edge.target?.nodeId ?? '']?.[edge.target?.portId ?? '']
 
-      const srcDelta = srcPortPos ? Math.hypot(edge.sourcePoint.x - srcPortPos.x, edge.sourcePoint.y - srcPortPos.y) : -1
-      const tgtDelta = tgtPortPos ? Math.hypot(edge.targetPoint.x - tgtPortPos.x, edge.targetPoint.y - tgtPortPos.y) : -1
+      const srcDelta = srcPortPos
+        ? Math.hypot(edge.sourcePoint.x - srcPortPos.x, edge.sourcePoint.y - srcPortPos.y)
+        : -1
+      const tgtDelta = tgtPortPos
+        ? Math.hypot(edge.targetPoint.x - tgtPortPos.x, edge.targetPoint.y - tgtPortPos.y)
+        : -1
 
       // Also check d attribute start/end vs sourcePoint/targetPoint
-      const dStartDelta = edge.dStart ? Math.hypot(edge.sourcePoint.x - edge.dStart.x, edge.sourcePoint.y - edge.dStart.y) : -1
-      const dEndDelta = edge.dEnd ? Math.hypot(edge.targetPoint.x - edge.dEnd.x, edge.targetPoint.y - edge.dEnd.y) : -1
+      const dStartDelta = edge.dStart
+        ? Math.hypot(edge.sourcePoint.x - edge.dStart.x, edge.sourcePoint.y - edge.dStart.y)
+        : -1
+      const dEndDelta = edge.dEnd
+        ? Math.hypot(edge.targetPoint.x - edge.dEnd.x, edge.targetPoint.y - edge.dEnd.y)
+        : -1
 
-      console.log(`  ${edge.edgeId}: ${edge.source?.nodeId}:${edge.source?.portId} → ${edge.target?.nodeId}:${edge.target?.portId}`)
+      console.log(
+        `  ${edge.edgeId}: ${edge.source?.nodeId}:${edge.source?.portId} → ${edge.target?.nodeId}:${edge.target?.portId}`,
+      )
       console.log(
         `    sourcePoint=(${edge.sourcePoint.x.toFixed(1)}, ${edge.sourcePoint.y.toFixed(1)})`,
-        srcPortPos ? `dotFlow=(${srcPortPos.x.toFixed(1)}, ${srcPortPos.y.toFixed(1)}) delta=${srcDelta.toFixed(1)}` : 'NO_DOT',
+        srcPortPos
+          ? `dotFlow=(${srcPortPos.x.toFixed(1)}, ${srcPortPos.y.toFixed(1)}) delta=${srcDelta.toFixed(1)}`
+          : 'NO_DOT',
         `d_start=(${edge.dStart?.x.toFixed(1)}, ${edge.dStart?.y.toFixed(1)}) d_delta=${dStartDelta.toFixed(1)}`,
       )
       console.log(
         `    targetPoint=(${edge.targetPoint.x.toFixed(1)}, ${edge.targetPoint.y.toFixed(1)})`,
-        tgtPortPos ? `dotFlow=(${tgtPortPos.x.toFixed(1)}, ${tgtPortPos.y.toFixed(1)}) delta=${tgtDelta.toFixed(1)}` : 'NO_DOT',
+        tgtPortPos
+          ? `dotFlow=(${tgtPortPos.x.toFixed(1)}, ${tgtPortPos.y.toFixed(1)}) delta=${tgtDelta.toFixed(1)}`
+          : 'NO_DOT',
         `d_end=(${edge.dEnd?.x.toFixed(1)}, ${edge.dEnd?.y.toFixed(1)}) d_delta=${dEndDelta.toFixed(1)}`,
       )
     }
@@ -401,7 +479,10 @@ test.describe('Port dot ↔ edge endpoint alignment', () => {
     // Check that sourcePoint/targetPoint match the d attribute start/end
     for (const edge of diagnostics.edgeData) {
       if (edge.dStart) {
-        const delta = Math.hypot(edge.sourcePoint.x - edge.dStart.x, edge.sourcePoint.y - edge.dStart.y)
+        const delta = Math.hypot(
+          edge.sourcePoint.x - edge.dStart.x,
+          edge.sourcePoint.y - edge.dStart.y,
+        )
         expect(delta, `${edge.edgeId} sourcePoint vs d start`).toBeLessThan(1)
       }
     }

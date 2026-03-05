@@ -56,7 +56,10 @@ export function createEdgePathsSignal<N, E>(
             })
           }
           // DEBUG: log computed edge endpoints for diagnosis
-          if (typeof window !== 'undefined' && (window as unknown as Record<string, unknown>).__FLOW_DEBUG_PORTS__) {
+          if (
+            typeof window !== 'undefined' &&
+            (window as unknown as Record<string, unknown>).__FLOW_DEBUG_PORTS__
+          ) {
             console.log(
               `[edge-ports] node=${nodeId} pos=(${pos.x.toFixed(1)},${pos.y.toFixed(1)}) dims=(${dims.width}×${dims.height})`,
             )
