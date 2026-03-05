@@ -37,43 +37,16 @@ export function pointInRect(p: Point, r: Rect, margin: number): boolean {
   )
 }
 
-export function segmentIntersectsRect(a: Point, b: Point, r: Rect, margin: number): boolean {
-  const left = r.x - margin
-  const right = r.x + r.w + margin
-  const top = r.y - margin
-  const bottom = r.y + r.h + margin
-
-  // Horizontal segment
-  if (a.y === b.y) {
-    if (a.y < top || a.y > bottom) return false
-    const minX = Math.min(a.x, b.x)
-    const maxX = Math.max(a.x, b.x)
-    return maxX > left && minX < right
-  }
-  // Vertical segment
-  if (a.x === b.x) {
-    if (a.x < left || a.x > right) return false
-    const minY = Math.min(a.y, b.y)
-    const maxY = Math.max(a.y, b.y)
-    return maxY > top && minY < bottom
-  }
-  return false
-}
-
-/** Check if an axis-aligned polyline path hits any obstacle */
+/**
+ * Check if a polyline path hits any obstacle.
+ * Handles both axis-aligned and diagonal segments.
+ */
 export function pathHitsObstacle(
   path: readonly Point[],
   obstacles: readonly Rect[],
   margin = 2,
 ): boolean {
-  for (let i = 0; i < path.length - 1; i++) {
-    const a = path[i]!
-    const b = path[i + 1]!
-    for (const obs of obstacles) {
-      if (segmentIntersectsRect(a, b, obs, margin)) return true
-    }
-  }
-  return false
+  return polylineHitsObstacle(path, obstacles, margin)
 }
 
 export function pathLength(points: readonly Point[]): number {
@@ -81,7 +54,7 @@ export function pathLength(points: readonly Point[]): number {
   for (let i = 1; i < points.length; i++) {
     const a = points[i - 1]!
     const b = points[i]!
-    len += Math.abs(b.x - a.x) + Math.abs(b.y - a.y)
+    len += Math.hypot(b.x - a.x, b.y - a.y)
   }
   return len
 }
@@ -377,14 +350,60 @@ export function buildEdgeObstacles(
   return rects
 }
 
-/** Approximate a cubic bezier as a polyline using de Casteljau subdivision */
+/**
+ * Build collision and routing obstacle rects for the source and target nodes
+ * themselves. The collision set uses a small inset so ports sitting exactly at
+ * node edges aren't falsely detected. The routing set inflates by `padding`.
+ */
+export function buildSelfNodeRects(
+  allObstacles: readonly {
+    readonly nodeId: string
+    readonly position: { x: number; y: number }
+    readonly dimensions: { width: number; height: number }
+  }[],
+  sourceNodeId: string,
+  targetNodeId: string,
+  padding: number,
+): { collision: Rect[]; routing: Rect[] } {
+  const collision: Rect[] = []
+  const routing: Rect[] = []
+
+  for (const obs of allObstacles) {
+    if (obs.nodeId !== sourceNodeId && obs.nodeId !== targetNodeId) continue
+    const inset = Math.min(2, Math.min(obs.dimensions.width, obs.dimensions.height) / 4)
+    collision.push({
+      x: obs.position.x + inset,
+      y: obs.position.y + inset,
+      w: obs.dimensions.width - inset * 2,
+      h: obs.dimensions.height - inset * 2,
+    })
+    routing.push({
+      x: obs.position.x - padding,
+      y: obs.position.y - padding,
+      w: obs.dimensions.width + padding * 2,
+      h: obs.dimensions.height + padding * 2,
+    })
+  }
+
+  return { collision, routing }
+}
+
+/** Approximate a cubic bezier as a polyline using de Casteljau subdivision.
+ * When `steps` is omitted, an adaptive count is chosen based on control point spread. */
 export function approximateBezierAsPolyline(
   p0: Point,
   p1: Point,
   p2: Point,
   p3: Point,
-  steps = 20,
+  steps?: number,
 ): Point[] {
+  if (steps === undefined) {
+    const span = Math.max(
+      Math.hypot(p3.x - p0.x, p3.y - p0.y),
+      Math.hypot(p1.x - p0.x, p1.y - p0.y) + Math.hypot(p2.x - p3.x, p2.y - p3.y),
+    )
+    steps = Math.max(8, Math.min(40, Math.round(span / 10)))
+  }
   const points: Point[] = []
   for (let i = 0; i <= steps; i++) {
     const t = i / steps
@@ -470,10 +489,10 @@ function generalSegmentIntersectsRect(a: Point, b: Point, r: Rect, margin: numbe
 
 /**
  * Compute a rerouted bezier path that avoids obstacles while maintaining
- * a smooth curve shape. Only considers obstacles that overlap the
- * control-handle-inflated bounding box of the edge. Routes a single cubic
- * bezier with control points shifted to clear the relevant obstacles,
- * preserving correct port exit/entry angles.
+ * a smooth curve shape. Routes a two-segment cubic bezier through a via
+ * point placed to clear obstacles, preserving correct port exit/entry
+ * angles. Tries Y-axis detour for horizontal ports and X-axis detour for
+ * vertical ports, falling back to the other axis when needed.
  */
 export function computeReroutedBezier(
   source: ComputedPortPosition,
@@ -487,28 +506,15 @@ export function computeReroutedBezier(
 
   const controlX = [source.x + sc.dx, target.x + tc.dx]
   const controlY = [source.y + sc.dy, target.y + tc.dy]
-  const spanMinX = Math.min(source.x, target.x) - clearance
-  const spanMaxX = Math.max(source.x, target.x) + clearance
-  const spanMinY = Math.min(source.y, target.y) - clearance
-  const spanMaxY = Math.max(source.y, target.y) + clearance
-  const controlMinX = Math.min(...controlX, spanMinX)
-  const controlMaxX = Math.max(...controlX, spanMaxX)
-  const controlMinY = Math.min(...controlY, spanMinY)
-  const controlMaxY = Math.max(...controlY, spanMaxY)
-
-  // For horizontal-ish edges, consider any obstacle in the X-span (keeps
-  // stacks of obstacles in the path's horizontal range). For vertical edges,
-  // require Y overlap.
-  const isVertical =
-    source.side === 'top' ||
-    source.side === 'bottom' ||
-    target.side === 'top' ||
-    target.side === 'bottom'
+  const spanMinX = Math.min(source.x, target.x, ...controlX) - clearance
+  const spanMaxX = Math.max(source.x, target.x, ...controlX) + clearance
+  const spanMinY = Math.min(source.y, target.y, ...controlY) - clearance
+  const spanMaxY = Math.max(source.y, target.y, ...controlY) + clearance
 
   const relevant = obstacles.filter((obs) => {
-    const overlapsX = obs.x + obs.w > controlMinX && obs.x < controlMaxX
-    const overlapsY = obs.y + obs.h > controlMinY && obs.y < controlMaxY
-    return isVertical ? overlapsX && overlapsY : overlapsX
+    const overlapsX = obs.x + obs.w > spanMinX && obs.x < spanMaxX
+    const overlapsY = obs.y + obs.h > spanMinY && obs.y < spanMaxY
+    return overlapsX && overlapsY
   })
 
   if (relevant.length === 0) {
@@ -520,61 +526,109 @@ export function computeReroutedBezier(
     ].join(' ')
   }
 
-  // Compute bounding box of relevant obstacles only
+  // Bounding box of relevant obstacles
+  let obsMinX = Infinity
+  let obsMaxX = -Infinity
   let obsMinY = Infinity
   let obsMaxY = -Infinity
   for (const obs of relevant) {
+    obsMinX = Math.min(obsMinX, obs.x)
+    obsMaxX = Math.max(obsMaxX, obs.x + obs.w)
     obsMinY = Math.min(obsMinY, obs.y)
     obsMaxY = Math.max(obsMaxY, obs.y + obs.h)
   }
 
-  // Determine whether to route above or below.
+  const midX = (source.x + target.x) / 2
   const midY = (source.y + target.y) / 2
-  const aboveY = obsMinY - clearance
-  const belowY = obsMaxY + clearance
-  let routeY = Math.abs(midY - aboveY) <= Math.abs(midY - belowY) ? aboveY : belowY
+  const validationMargin = Math.max(0, clearance - 1)
+  const sourceH = source.side === 'left' || source.side === 'right'
+  const targetH = target.side === 'left' || target.side === 'right'
 
-  // Two-segment cubic bezier through a via point at routeY.
-  const viaX = (source.x + target.x) / 2
-  const dir = source.x < target.x ? 1 : -1
-
-  // Control point distance proportional to segment span — ensures the curve
-  // stays flat near routeY long enough to clear obstacles horizontally.
-  const halfSpan = Math.abs(viaX - source.x)
-  const cpDist = Math.max(controlOffset, halfSpan * 0.4)
-
-  const buildPath = (ry: number): string => {
-    const cp1x = source.x + sc.dx
-    const cp1y = source.y + sc.dy
-    const cp2x = viaX - dir * cpDist
-    const cp2y = ry
-
-    const cp3x = viaX + dir * cpDist
-    const cp3y = ry
-    const cp4x = target.x + tc.dx
-    const cp4y = target.y + tc.dy
-
+  // Two-segment cubic bezier through a via point, detouring in Y
+  const buildYDetour = (routeY: number): string => {
+    const viaX = midX
+    const dirX = source.x <= target.x ? 1 : -1
+    const halfSpan = Math.abs(viaX - source.x)
+    const cpDist = Math.max(controlOffset, halfSpan * 0.4)
     return [
       `M ${source.x} ${source.y}`,
-      `C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${viaX} ${ry}`,
-      `C ${cp3x} ${cp3y}, ${cp4x} ${cp4y}, ${target.x} ${target.y}`,
+      `C ${source.x + sc.dx} ${source.y + sc.dy}, ${viaX - dirX * cpDist} ${routeY}, ${viaX} ${routeY}`,
+      `C ${viaX + dirX * cpDist} ${routeY}, ${target.x + tc.dx} ${target.y + tc.dy}, ${target.x} ${target.y}`,
     ].join(' ')
   }
 
-  let path = buildPath(routeY)
-
-  // If the constructed path still grazes obstacles (e.g., tight clearances),
-  // push the route farther away and retry once.
-  if (
-    relevant.length > 0 &&
-    polylineHitsObstacle(approximatePathAsPolyline(path, 20), relevant, Math.max(0, clearance - 1))
-  ) {
-    const bump = clearance || 10
-    routeY = routeY < obsMinY ? obsMinY - bump : obsMaxY + bump
-    path = buildPath(routeY)
+  // Two-segment cubic bezier through a via point, detouring in X
+  const buildXDetour = (routeX: number): string => {
+    const viaY = midY
+    const dirY = source.y <= target.y ? 1 : -1
+    const halfSpan = Math.abs(viaY - source.y)
+    const cpDist = Math.max(controlOffset, halfSpan * 0.4)
+    return [
+      `M ${source.x} ${source.y}`,
+      `C ${source.x + sc.dx} ${source.y + sc.dy}, ${routeX} ${viaY - dirY * cpDist}, ${routeX} ${viaY}`,
+      `C ${routeX} ${viaY + dirY * cpDist}, ${target.x + tc.dx} ${target.y + tc.dy}, ${target.x} ${target.y}`,
+    ].join(' ')
   }
 
-  return path
+  const testPath = (path: string): boolean => {
+    const approx = approximatePathAsPolyline(path)
+    return approx.length >= 2 && !polylineHitsObstacle(approx, relevant, validationMargin)
+  }
+
+  // Minimum offset from obstacle boundary to account for bezier curve overshoot.
+  // Bezier curves don't stay flat at the via point — they arc toward the
+  // target, so we need enough margin for the curve to clear the obstacle.
+  const minOffset = Math.max(clearance, 20)
+
+  // Y-axis candidates (above/below obstacles) — preferred for horizontal ports
+  const aboveY = obsMinY - minOffset
+  const belowY = obsMaxY + minOffset
+  const nearY = Math.abs(midY - aboveY) <= Math.abs(midY - belowY) ? aboveY : belowY
+  const farY = nearY === aboveY ? belowY : aboveY
+
+  // X-axis candidates (left/right of obstacles) — preferred for vertical ports
+  const leftX = obsMinX - minOffset
+  const rightX = obsMaxX + minOffset
+  const nearX = Math.abs(midX - leftX) <= Math.abs(midX - rightX) ? leftX : rightX
+  const farX = nearX === leftX ? rightX : leftX
+
+  // Extra-clearance bump for tight fits
+  const bump = minOffset + 10
+  const bumpNearY = nearY < midY ? obsMinY - bump : obsMaxY + bump
+  const bumpFarY = farY < midY ? obsMinY - bump : obsMaxY + bump
+  const bumpNearX = nearX < midX ? obsMinX - bump : obsMaxX + bump
+  const bumpFarX = farX < midX ? obsMinX - bump : obsMaxX + bump
+
+  type Builder = () => string
+  const yCandidates: Builder[] = [
+    () => buildYDetour(nearY),
+    () => buildYDetour(farY),
+    () => buildYDetour(bumpNearY),
+    () => buildYDetour(bumpFarY),
+  ]
+  const xCandidates: Builder[] = [
+    () => buildXDetour(nearX),
+    () => buildXDetour(farX),
+    () => buildXDetour(bumpNearX),
+    () => buildXDetour(bumpFarX),
+  ]
+
+  // Horizontal ports prefer Y-detour, vertical prefer X-detour
+  const primary =
+    sourceH && targetH ? yCandidates : !sourceH && !targetH ? xCandidates : yCandidates
+  const fallback = primary === yCandidates ? xCandidates : yCandidates
+
+  for (const build of primary) {
+    const path = build()
+    if (testPath(path)) return path
+  }
+  for (const build of fallback) {
+    const path = build()
+    if (testPath(path)) return path
+  }
+
+  // All candidates collide — return the closest one
+  return primary[0]!()
 }
 
 /**

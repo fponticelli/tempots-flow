@@ -43,7 +43,6 @@ interface BundleEdge {
 }
 
 const DEFAULT_MAX_ITERATIONS = 1000
-const DEFAULT_BUNDLE_KEY_RESOLUTION = 10
 
 interface FanGeometry {
   readonly perpX: number
@@ -51,18 +50,8 @@ interface FanGeometry {
   readonly offsets: Map<string, number>
 }
 
-function bundleKey(
-  source: ComputedPortPosition,
-  target: ComputedPortPosition,
-  resolution: number,
-): string {
-  // Canonical key by source-node-region and target-node-region
-  // We approximate node identity by rounding positions to the configured grid
-  const sx = Math.round(source.x / resolution) * resolution
-  const sy = Math.round(source.y / resolution) * resolution
-  const tx = Math.round(target.x / resolution) * resolution
-  const ty = Math.round(target.y / resolution) * resolution
-  return `${sx},${sy}->${tx},${ty}`
+function bundleKey(edge: BundleEdge): string {
+  return `${edge.sourceNodeId}->${edge.targetNodeId}`
 }
 
 function computeFanGeometry(
@@ -252,7 +241,6 @@ export function createBundledStrategy(options: BundlingOptions = {}): EdgeRoutin
   const exitDist = options.exitDistance ?? 40
   const avoidObstacles = options.avoidObstacles ?? true
   const nodePadding = options.nodePadding ?? DEFAULT_NODE_PADDING
-  const bundleKeyResolution = options.bundleKeyResolution ?? DEFAULT_BUNDLE_KEY_RESOLUTION
 
   return {
     computePath(params: EdgeRoutingParams): string {
@@ -267,7 +255,7 @@ export function createBundledStrategy(options: BundlingOptions = {}): EdgeRoutin
       // Group edges by source-target node pair
       const groups = new Map<string, BundleEdge[]>()
       for (const edge of params.edges) {
-        const key = bundleKey(edge.source, edge.target, bundleKeyResolution)
+        const key = bundleKey(edge)
         let group = groups.get(key)
         if (!group) {
           group = []
@@ -308,13 +296,9 @@ export function createBundledStrategy(options: BundlingOptions = {}): EdgeRoutin
         const targetNodeId = edge.targetNodeId ?? edge.edgeId
 
         if (avoidObstacles && params.obstacles && params.obstacles.length > 0) {
-          const obstacles = buildEdgeObstacles(
-            params.obstacles,
-            sourceNodeId,
-            targetNodeId,
-            nodePadding,
-          )
-          if (obstacles.length > 0 && polylineHitsObstacle(data.polyline, obstacles, 0)) {
+          const collisionObs = buildEdgeObstacles(params.obstacles, sourceNodeId, targetNodeId, 0)
+          const routingObs = buildEdgeObstacles(params.obstacles, sourceNodeId, targetNodeId, nodePadding)
+          if (collisionObs.length > 0 && polylineHitsObstacle(data.polyline, collisionObs, 0)) {
             const fan = fanMeta.get(edge.edgeId)
             let rerouted: string | null = null
 
@@ -322,7 +306,7 @@ export function createBundledStrategy(options: BundlingOptions = {}): EdgeRoutin
               const waypoints = computeOrthogonalWaypoints(
                 edge.source,
                 edge.target,
-                obstacles,
+                routingObs,
                 exitDist,
                 DEFAULT_MAX_ITERATIONS,
                 0,
@@ -339,7 +323,7 @@ export function createBundledStrategy(options: BundlingOptions = {}): EdgeRoutin
 
               const smooth = catmullRomThroughWaypoints(shifted, 0.35)
               const approx = approximatePathAsPolyline(smooth, 12)
-              if (approx.length >= 2 && !polylineHitsObstacle(approx, obstacles, 0)) {
+              if (approx.length >= 2 && !polylineHitsObstacle(approx, routingObs, 0)) {
                 rerouted = smooth
               }
             }
@@ -349,7 +333,7 @@ export function createBundledStrategy(options: BundlingOptions = {}): EdgeRoutin
               rerouted = computeReroutedBezier(
                 edge.source,
                 edge.target,
-                obstacles,
+                routingObs,
                 exitDist,
                 nodePadding,
               )

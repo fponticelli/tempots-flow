@@ -148,14 +148,28 @@ export function NodeWrapper<N, E>(
           const nodeH = el.offsetHeight
           const offsetX = dotRect.left + dotRect.width / 2 - nodeRect.left
           const offsetY = dotRect.top + dotRect.height / 2 - nodeRect.top
-          // Infer side from which edge of the node the dot is closest to
-          const dL = Math.abs(offsetX)
-          const dR = Math.abs(offsetX - nodeW)
-          const dT = Math.abs(offsetY)
-          const dB = Math.abs(offsetY - nodeH)
-          const minD = Math.min(dL, dR, dT, dB)
-          const side: PortSide =
-            minD === dL ? 'left' : minD === dR ? 'right' : minD === dT ? 'top' : 'bottom'
+          // Determine side from the port direction attribute and the dot's
+          // position relative to the node center.  Using the declared direction
+          // (input vs output) narrows the candidates to two sides, then we pick
+          // the one the dot is actually closest to.  This avoids mis-classifying
+          // ports on wide/tall nodes where pure distance-to-edge is ambiguous.
+          const direction = portEl.dataset.portdirection
+          let side: PortSide
+          if (direction === 'input') {
+            // Input ports attach on the "incoming" side: left or top
+            side = Math.abs(offsetX) <= Math.abs(offsetY) ? 'left' : 'top'
+          } else if (direction === 'output') {
+            // Output ports attach on the "outgoing" side: right or bottom
+            side = Math.abs(offsetX - nodeW) <= Math.abs(offsetY - nodeH) ? 'right' : 'bottom'
+          } else {
+            // Fallback for unknown direction: use closest edge
+            const dL = Math.abs(offsetX)
+            const dR = Math.abs(offsetX - nodeW)
+            const dT = Math.abs(offsetY)
+            const dB = Math.abs(offsetY - nodeH)
+            const minD = Math.min(dL, dR, dT, dB)
+            side = minD === dL ? 'left' : minD === dR ? 'right' : minD === dT ? 'top' : 'bottom'
+          }
           offsets.set(portId, { offsetX, offsetY, side })
         }
         if (offsets.size > 0) {

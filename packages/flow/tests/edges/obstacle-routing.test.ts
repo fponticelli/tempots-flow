@@ -6,7 +6,7 @@ import {
   detourRoute,
   buildEdgeObstacles,
   polylineHitsObstacle,
-  approximateBezierAsPolyline,
+  approximatePathAsPolyline,
   pathHitsObstacle,
   type Point,
   type Rect,
@@ -161,15 +161,9 @@ describe('computeOrthogonalWaypoints — real pipeline demo data', () => {
     expect(path).toMatch(/^M /)
     expect(path).toContain('C ')
 
-    // Two-segment bezier: M p0 C cp1 cp2 via C cp3 cp4 end → 7 points
     const points = parseSvgPathPoints(path)
-    expect(points.length).toBe(7)
-
-    const p0 = points[0]! // source
-    const via = points[3]! // midpoint at routeY
-    const cp3 = points[4]!
-    const cp4 = points[5]!
-    const pEnd = points[6]! // target
+    const p0 = points[0]!
+    const pEnd = points[points.length - 1]!
 
     // Verify curve starts at source and ends at target
     expect(p0.x).toBeCloseTo(source.x)
@@ -177,16 +171,25 @@ describe('computeOrthogonalWaypoints — real pipeline demo data', () => {
     expect(pEnd.x).toBeCloseTo(target.x)
     expect(pEnd.y).toBeCloseTo(target.y)
 
-    // Sample the second bezier segment and verify it doesn't hit obstacles.
-    // The first segment starts inside the padded Y-range of an obstacle, so it trivially intersects the padded region.
-    const seg2 = approximateBezierAsPolyline(via, cp3, cp4, pEnd, 20)
-    expect(polylineHitsObstacle(seg2, obstacles, 0)).toBe(false)
+    // Verify the full rerouted path avoids all relevant obstacles
+    const polyline = approximatePathAsPolyline(path, 40)
+    // Only check obstacles that overlap the path's bounding box (the function
+    // internally filters, so test against the same relevant set)
+    const relevant = obstacles.filter((obs) => {
+      const minX = Math.min(source.x, target.x)
+      const maxX = Math.max(source.x, target.x)
+      const minY = Math.min(...polyline.map((p) => p.y))
+      const maxY = Math.max(...polyline.map((p) => p.y))
+      return obs.x + obs.w > minX && obs.x < maxX && obs.y + obs.h > minY && obs.y < maxY
+    })
+    expect(polylineHitsObstacle(polyline, relevant, 0)).toBe(false)
   })
 
   it('routes below when target is below obstacles', () => {
     const source = { x: 100, y: 260, side: 'right' as const }
     const target = { x: 500, y: 280, side: 'left' as const }
-    const obstacles: Rect[] = [{ x: 250, y: 150, w: 100, h: 80 }]
+    // Obstacle that overlaps the edge's Y range and sits between source/target
+    const obstacles: Rect[] = [{ x: 250, y: 250, w: 100, h: 20 }]
 
     const path = computeReroutedBezier(source, target, obstacles, 30, 20)
     const points = parseSvgPathPoints(path)
@@ -194,8 +197,8 @@ describe('computeOrthogonalWaypoints — real pipeline demo data', () => {
     expect(points.length).toBe(7)
     const via = points[3]!
 
-    // Both source and target Y > obstacle bottom (230)
-    expect(via.y).toBeGreaterThanOrEqual(150 + 80 + 20)
+    // Should route below the obstacle (obs bottom at 270 + clearance 20 = 290)
+    expect(via.y).toBeGreaterThanOrEqual(270 + 20)
   })
 })
 

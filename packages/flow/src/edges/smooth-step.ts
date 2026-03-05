@@ -87,17 +87,17 @@ export function createSmoothStepStrategy(options?: SmoothStepOptions): EdgeRouti
         const { source, target } = edge
         const sourceNodeId = edge.sourceNodeId ?? edge.edgeId
         const targetNodeId = edge.targetNodeId ?? edge.edgeId
-        const obstacles = buildEdgeObstacles(
-          params.obstacles ?? [],
-          sourceNodeId,
-          targetNodeId,
-          nodePadding,
-        )
+        const allObs = params.obstacles ?? []
+        const collisionObstacles = buildEdgeObstacles(allObs, sourceNodeId, targetNodeId, 0)
+        const routingObstacles = buildEdgeObstacles(allObs, sourceNodeId, targetNodeId, nodePadding)
 
         // Compute step waypoints first
         const stepWaypoints = computeStepWaypoints(source, target, offset)
 
-        if (obstacles.length === 0 || !pathHitsObstacle(stepWaypoints, obstacles, 0)) {
+        if (
+          collisionObstacles.length === 0 ||
+          !pathHitsObstacle(stepWaypoints, collisionObstacles, 0)
+        ) {
           // No collision — use standard smooth step path
           result.set(edge.edgeId, smoothStepFromWaypoints(stepWaypoints, radius))
           continue
@@ -107,7 +107,7 @@ export function createSmoothStepStrategy(options?: SmoothStepOptions): EdgeRouti
         const waypoints = computeOrthogonalWaypoints(
           source,
           target,
-          obstacles,
+          routingObstacles,
           nodePadding,
           DEFAULT_MAX_ITERATIONS,
           0,

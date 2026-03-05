@@ -39,14 +39,11 @@ export function createStraightStrategy(options?: StraightOptions): EdgeRoutingSt
         const { source, target } = edge
         const sourceNodeId = edge.sourceNodeId ?? edge.edgeId
         const targetNodeId = edge.targetNodeId ?? edge.edgeId
-        const obstacles = buildEdgeObstacles(
-          params.obstacles ?? [],
-          sourceNodeId,
-          targetNodeId,
-          nodePadding,
-        )
+        const allObs = params.obstacles ?? []
+        const collisionObstacles = buildEdgeObstacles(allObs, sourceNodeId, targetNodeId, 0)
+        const routingObstacles = buildEdgeObstacles(allObs, sourceNodeId, targetNodeId, nodePadding)
 
-        if (obstacles.length === 0) {
+        if (collisionObstacles.length === 0) {
           result.set(edge.edgeId, `M ${source.x} ${source.y} L ${target.x} ${target.y}`)
           continue
         }
@@ -56,7 +53,7 @@ export function createStraightStrategy(options?: StraightOptions): EdgeRoutingSt
           { x: source.x, y: source.y },
           { x: target.x, y: target.y },
         ]
-        if (!polylineHitsObstacle(line, obstacles, 0)) {
+        if (!polylineHitsObstacle(line, collisionObstacles, 0)) {
           result.set(edge.edgeId, `M ${source.x} ${source.y} L ${target.x} ${target.y}`)
           continue
         }
@@ -65,7 +62,7 @@ export function createStraightStrategy(options?: StraightOptions): EdgeRoutingSt
         const waypoints = computeOrthogonalWaypoints(
           source,
           target,
-          obstacles,
+          routingObstacles,
           nodePadding,
           DEFAULT_MAX_ITERATIONS,
           0,

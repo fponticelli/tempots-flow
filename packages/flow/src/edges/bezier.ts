@@ -99,53 +99,12 @@ export function createBezierStrategy(
         const targetNodeId = edge.targetNodeId ?? edge.edgeId
         const path = computeBezierPath(source, target, curvature, controlOffset)
 
-        // Check if the bezier curve collides with any obstacle
-        const obstacles = buildEdgeObstacles(
-          params.obstacles ?? [],
-          sourceNodeId,
-          targetNodeId,
-          nodePadding,
-        )
-
+        // Check if the bezier curve collides with any obstacle.
+        // Use unpadded rects for detection (we only reroute if the curve actually
+        // passes through a node), padded rects for routing clearance.
         const allObs = params.obstacles ?? []
-        const sourceObs = allObs.find((o) => o.nodeId === sourceNodeId)
-        const targetObs = allObs.find((o) => o.nodeId === targetNodeId)
-
-        const collisionObstacles = [...obstacles]
-        if (sourceObs) {
-          collisionObstacles.push({
-            x: sourceObs.position.x + 1,
-            y: sourceObs.position.y + 1,
-            w: sourceObs.dimensions.width - 2,
-            h: sourceObs.dimensions.height - 2,
-          })
-        }
-        if (targetObs) {
-          collisionObstacles.push({
-            x: targetObs.position.x + 1,
-            y: targetObs.position.y + 1,
-            w: targetObs.dimensions.width - 2,
-            h: targetObs.dimensions.height - 2,
-          })
-        }
-
-        const routingObstacles = [...obstacles]
-        if (sourceObs) {
-          routingObstacles.push({
-            x: sourceObs.position.x - nodePadding,
-            y: sourceObs.position.y - nodePadding,
-            w: sourceObs.dimensions.width + nodePadding * 2,
-            h: sourceObs.dimensions.height + nodePadding * 2,
-          })
-        }
-        if (targetObs) {
-          routingObstacles.push({
-            x: targetObs.position.x - nodePadding,
-            y: targetObs.position.y - nodePadding,
-            w: targetObs.dimensions.width + nodePadding * 2,
-            h: targetObs.dimensions.height + nodePadding * 2,
-          })
-        }
+        const collisionObstacles = buildEdgeObstacles(allObs, sourceNodeId, targetNodeId, 0)
+        const routingObstacles = buildEdgeObstacles(allObs, sourceNodeId, targetNodeId, nodePadding)
 
         if (collisionObstacles.length === 0) {
           result.set(edge.edgeId, path)
