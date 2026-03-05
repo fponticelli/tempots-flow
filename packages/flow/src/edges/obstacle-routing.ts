@@ -570,47 +570,48 @@ export function computeReroutedBezier(
     ].join(' ')
   }
 
-  const testPath = (path: string): boolean => {
+  /** Test a candidate path and return its approximate length, or -1 if it collides. */
+  const scorePath = (path: string): number => {
     const approx = approximatePathAsPolyline(path)
-    return approx.length >= 2 && !polylineHitsObstacle(approx, relevant, validationMargin)
+    if (approx.length < 2 || polylineHitsObstacle(approx, relevant, validationMargin)) return -1
+    let len = 0
+    for (let i = 1; i < approx.length; i++) {
+      const a = approx[i - 1]!
+      const b = approx[i]!
+      len += Math.hypot(b.x - a.x, b.y - a.y)
+    }
+    return len
   }
 
   // Minimum offset from obstacle boundary to account for bezier curve overshoot.
-  // Bezier curves don't stay flat at the via point — they arc toward the
-  // target, so we need enough margin for the curve to clear the obstacle.
   const minOffset = Math.max(clearance, 20)
+  const bump = minOffset + 10
 
-  // Y-axis candidates (above/below obstacles) — preferred for horizontal ports
+  // Build all candidate detour paths and pick the shortest valid one.
+  // Y-axis detours (above/below) for horizontal ports,
+  // X-axis detours (left/right) for vertical ports.
   const aboveY = obsMinY - minOffset
   const belowY = obsMaxY + minOffset
-  const nearY = Math.abs(midY - aboveY) <= Math.abs(midY - belowY) ? aboveY : belowY
-  const farY = nearY === aboveY ? belowY : aboveY
+  const aboveBumpY = obsMinY - bump
+  const belowBumpY = obsMaxY + bump
 
-  // X-axis candidates (left/right of obstacles) — preferred for vertical ports
   const leftX = obsMinX - minOffset
   const rightX = obsMaxX + minOffset
-  const nearX = Math.abs(midX - leftX) <= Math.abs(midX - rightX) ? leftX : rightX
-  const farX = nearX === leftX ? rightX : leftX
-
-  // Extra-clearance bump for tight fits
-  const bump = minOffset + 10
-  const bumpNearY = nearY < midY ? obsMinY - bump : obsMaxY + bump
-  const bumpFarY = farY < midY ? obsMinY - bump : obsMaxY + bump
-  const bumpNearX = nearX < midX ? obsMinX - bump : obsMaxX + bump
-  const bumpFarX = farX < midX ? obsMinX - bump : obsMaxX + bump
+  const leftBumpX = obsMinX - bump
+  const rightBumpX = obsMaxX + bump
 
   type Builder = () => string
   const yCandidates: Builder[] = [
-    () => buildYDetour(nearY),
-    () => buildYDetour(farY),
-    () => buildYDetour(bumpNearY),
-    () => buildYDetour(bumpFarY),
+    () => buildYDetour(aboveY),
+    () => buildYDetour(belowY),
+    () => buildYDetour(aboveBumpY),
+    () => buildYDetour(belowBumpY),
   ]
   const xCandidates: Builder[] = [
-    () => buildXDetour(nearX),
-    () => buildXDetour(farX),
-    () => buildXDetour(bumpNearX),
-    () => buildXDetour(bumpFarX),
+    () => buildXDetour(leftX),
+    () => buildXDetour(rightX),
+    () => buildXDetour(leftBumpX),
+    () => buildXDetour(rightBumpX),
   ]
 
   // Horizontal ports prefer Y-detour, vertical prefer X-detour
@@ -618,17 +619,23 @@ export function computeReroutedBezier(
     sourceH && targetH ? yCandidates : !sourceH && !targetH ? xCandidates : yCandidates
   const fallback = primary === yCandidates ? xCandidates : yCandidates
 
-  for (const build of primary) {
-    const path = build()
-    if (testPath(path)) return path
-  }
-  for (const build of fallback) {
-    const path = build()
-    if (testPath(path)) return path
+  let bestPath: string | null = null
+  let bestLen = Infinity
+
+  for (const candidates of [primary, fallback]) {
+    for (const build of candidates) {
+      const path = build()
+      const len = scorePath(path)
+      if (len >= 0 && len < bestLen) {
+        bestPath = path
+        bestLen = len
+      }
+    }
+    // If we found valid candidates in the primary set, skip fallback
+    if (bestPath !== null) break
   }
 
-  // All candidates collide — return the closest one
-  return primary[0]!()
+  return bestPath ?? primary[0]!()
 }
 
 /**
