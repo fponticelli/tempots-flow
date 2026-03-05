@@ -8,7 +8,7 @@ import {
   pointInRect,
   computeOrthogonalWaypoints,
   waypointsToPath,
-} from './collision'
+} from './obstacle-routing'
 
 export interface OrthogonalOptions {
   /** Corner rounding radius. Default: 8 */

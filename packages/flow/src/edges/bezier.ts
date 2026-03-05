@@ -1,8 +1,32 @@
-import type { EdgeRoutingStrategy, EdgeRoutingParams } from '../types/config'
+import type {
+  EdgeRoutingStrategy,
+  EdgeRoutingParams,
+  EdgeBatchRoutingParams,
+} from '../types/config'
 import type { ComputedPortPosition, PortSide } from '../types/layout'
+import {
+  approximateBezierAsPolyline,
+  buildEdgeObstacles,
+  catmullRomThroughWaypoints,
+  computeOrthogonalWaypoints,
+  polylineHitsObstacle,
+} from './obstacle-routing'
+
+export interface BezierOptions {
+  /** Curvature factor for control point offset. Default: 0.5 */
+  readonly curvature?: number
+  /** Minimum control point offset in px. Default: 30 */
+  readonly controlOffset?: number
+  /** Re-route edges around node obstacles. Default: true */
+  readonly avoidObstacles?: boolean
+  /** Clearance around obstacles in px. Default: 20 */
+  readonly nodePadding?: number
+}
 
 const DEFAULT_CURVATURE = 0.5
 const MIN_CONTROL_OFFSET = 30
+const DEFAULT_NODE_PADDING = 20
+const DEFAULT_MAX_ITERATIONS = 1000
 
 function controlPointOffset(pos: ComputedPortPosition, offset: number): { dx: number; dy: number } {
   const map: Record<PortSide, { dx: number; dy: number }> = {
@@ -14,27 +38,110 @@ function controlPointOffset(pos: ComputedPortPosition, offset: number): { dx: nu
   return map[pos.side]
 }
 
+function computeBezierPath(
+  source: ComputedPortPosition,
+  target: ComputedPortPosition,
+  curvature: number,
+  controlOffset: number,
+): string {
+  const dx = Math.abs(target.x - source.x)
+  const dy = Math.abs(target.y - source.y)
+  const dist = Math.max(dx, dy)
+  const offset = Math.max(dist * curvature, controlOffset)
+
+  const sc = controlPointOffset(source, offset)
+  const tc = controlPointOffset(target, offset)
+
+  return [
+    `M ${source.x} ${source.y}`,
+    `C ${source.x + sc.dx} ${source.y + sc.dy},`,
+    `${target.x + tc.dx} ${target.y + tc.dy},`,
+    `${target.x} ${target.y}`,
+  ].join(' ')
+}
+
+/** @deprecated Use `createBezierStrategy(options)` with BezierOptions instead */
+export function createBezierStrategy(curvature?: number, controlOffset?: number): EdgeRoutingStrategy
+export function createBezierStrategy(options?: BezierOptions): EdgeRoutingStrategy
 export function createBezierStrategy(
-  curvature = DEFAULT_CURVATURE,
-  controlOffset = MIN_CONTROL_OFFSET,
+  optionsOrCurvature?: BezierOptions | number,
+  controlOffsetArg?: number,
 ): EdgeRoutingStrategy {
-  return {
+  let curvature = DEFAULT_CURVATURE
+  let controlOffset = MIN_CONTROL_OFFSET
+  let avoidObstacles = true
+  let nodePadding = DEFAULT_NODE_PADDING
+
+  if (typeof optionsOrCurvature === 'number') {
+    curvature = optionsOrCurvature
+    controlOffset = controlOffsetArg ?? MIN_CONTROL_OFFSET
+  } else if (optionsOrCurvature) {
+    curvature = optionsOrCurvature.curvature ?? DEFAULT_CURVATURE
+    controlOffset = optionsOrCurvature.controlOffset ?? MIN_CONTROL_OFFSET
+    avoidObstacles = optionsOrCurvature.avoidObstacles ?? true
+    nodePadding = optionsOrCurvature.nodePadding ?? DEFAULT_NODE_PADDING
+  }
+
+  const strategy: EdgeRoutingStrategy = {
     computePath(params: EdgeRoutingParams): string {
-      const { source, target } = params
-      const dx = Math.abs(target.x - source.x)
-      const dy = Math.abs(target.y - source.y)
-      const dist = Math.max(dx, dy)
-      const offset = Math.max(dist * curvature, controlOffset)
-
-      const sc = controlPointOffset(source, offset)
-      const tc = controlPointOffset(target, offset)
-
-      return [
-        `M ${source.x} ${source.y}`,
-        `C ${source.x + sc.dx} ${source.y + sc.dy},`,
-        `${target.x + tc.dx} ${target.y + tc.dy},`,
-        `${target.x} ${target.y}`,
-      ].join(' ')
+      return computeBezierPath(params.source, params.target, curvature, controlOffset)
     },
   }
+
+  if (avoidObstacles) {
+    strategy.computeAllPaths = (params: EdgeBatchRoutingParams): ReadonlyMap<string, string> => {
+      const result = new Map<string, string>()
+
+      for (const edge of params.edges) {
+        const { source, target } = edge
+        const path = computeBezierPath(source, target, curvature, controlOffset)
+
+        // Check if the bezier curve collides with any obstacle
+        const obstacles = buildEdgeObstacles(params.obstacles ?? [], source, target, nodePadding)
+
+        if (obstacles.length === 0) {
+          result.set(edge.edgeId, path)
+          continue
+        }
+
+        // Compute bezier control points for intersection testing
+        const dx = Math.abs(target.x - source.x)
+        const dy = Math.abs(target.y - source.y)
+        const dist = Math.max(dx, dy)
+        const offset = Math.max(dist * curvature, controlOffset)
+        const sc = controlPointOffset(source, offset)
+        const tc = controlPointOffset(target, offset)
+
+        const p0 = { x: source.x, y: source.y }
+        const p1 = { x: source.x + sc.dx, y: source.y + sc.dy }
+        const p2 = { x: target.x + tc.dx, y: target.y + tc.dy }
+        const p3 = { x: target.x, y: target.y }
+
+        const polyline = approximateBezierAsPolyline(p0, p1, p2, p3)
+
+        if (!polylineHitsObstacle(polyline, obstacles)) {
+          result.set(edge.edgeId, path)
+          continue
+        }
+
+        // Collision detected: reroute via orthogonal waypoints + smooth curve
+        // Use the bezier's natural control offset as exit distance so the
+        // rerouted path starts at a distance consistent with the curve shape
+        const exitDist = Math.max(controlOffset, nodePadding)
+        const waypoints = computeOrthogonalWaypoints(
+          source,
+          target,
+          obstacles,
+          exitDist,
+          DEFAULT_MAX_ITERATIONS,
+          nodePadding,
+        )
+        result.set(edge.edgeId, catmullRomThroughWaypoints(waypoints))
+      }
+
+      return result
+    }
+  }
+
+  return strategy
 }

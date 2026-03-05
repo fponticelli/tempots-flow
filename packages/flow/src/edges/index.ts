@@ -1,7 +1,9 @@
 // @tempots/flow/edges — Edge routing strategies
 
 export { createBezierStrategy } from './bezier'
+export type { BezierOptions } from './bezier'
 export { createStraightStrategy } from './straight'
+export type { StraightOptions } from './straight'
 export { createStepStrategy } from './step'
 export type { StepOptions } from './step'
 export { createSmoothStepStrategy } from './smooth-step'
@@ -12,3 +14,14 @@ export { createOrthogonalStrategy } from './orthogonal'
 export type { OrthogonalOptions } from './orthogonal'
 export { computePortPositionsForNode, computePortPosition } from './port-positions'
 export { createEdgePathsSignal } from './compute-edge-paths'
+
+// Collision detection utilities for custom strategy authors
+export {
+  buildEdgeObstacles,
+  polylineHitsObstacle,
+  catmullRomThroughWaypoints,
+  approximateBezierAsPolyline,
+  computeOrthogonalWaypoints,
+  waypointsToPath,
+} from './obstacle-routing'
+export type { Rect as ObstacleRect, Point as RoutePoint } from './obstacle-routing'

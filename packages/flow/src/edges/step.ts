@@ -1,16 +1,29 @@
-import type { EdgeRoutingStrategy, EdgeRoutingParams } from '../types/config'
+import type {
+  EdgeRoutingStrategy,
+  EdgeRoutingParams,
+  EdgeBatchRoutingParams,
+} from '../types/config'
 import type { ComputedPortPosition, PortSide } from '../types/layout'
+import {
+  buildEdgeObstacles,
+  computeOrthogonalWaypoints,
+  pathHitsObstacle,
+  waypointsToPath,
+  type Point,
+} from './obstacle-routing'
 
 export interface StepOptions {
+  /** Exit/entry offset distance in px. Default: 20 */
   readonly offset?: number
+  /** Re-route edges around node obstacles. Default: true */
+  readonly avoidObstacles?: boolean
+  /** Clearance around obstacles in px. Default: 20 */
+  readonly nodePadding?: number
 }
 
 const DEFAULT_OFFSET = 20
-
-interface Point {
-  readonly x: number
-  readonly y: number
-}
+const DEFAULT_NODE_PADDING = 20
+const DEFAULT_MAX_ITERATIONS = 1000
 
 function sideDirection(side: PortSide): { dx: number; dy: number } {
   const map: Record<PortSide, { dx: number; dy: number }> = {
@@ -126,10 +139,62 @@ export function computeStepPath(
 
 export function createStepStrategy(options?: StepOptions): EdgeRoutingStrategy {
   const offset = options?.offset ?? DEFAULT_OFFSET
+  const avoidObstacles = options?.avoidObstacles ?? true
+  const nodePadding = options?.nodePadding ?? DEFAULT_NODE_PADDING
 
-  return {
+  const strategy: EdgeRoutingStrategy = {
     computePath(params: EdgeRoutingParams): string {
       return computeStepPath(params.source, params.target, offset).join(' ')
     },
   }
+
+  if (avoidObstacles) {
+    strategy.computeAllPaths = (params: EdgeBatchRoutingParams): ReadonlyMap<string, string> => {
+      const result = new Map<string, string>()
+
+      for (const edge of params.edges) {
+        const { source, target } = edge
+        const obstacles = buildEdgeObstacles(params.obstacles ?? [], source, target, nodePadding)
+
+        // Compute step waypoints first
+        const stepWaypoints = computeStepWaypoints(source, target, offset)
+
+        if (obstacles.length === 0 || !pathHitsObstacle(stepWaypoints, obstacles)) {
+          // No collision — use standard step path
+          const first = stepWaypoints[0]
+          if (!first) {
+            result.set(edge.edgeId, '')
+            continue
+          }
+          const segments: string[] = [`M ${first.x} ${first.y}`]
+          for (let i = 1; i < stepWaypoints.length; i++) {
+            const curr = stepWaypoints[i]!
+            const prev = stepWaypoints[i - 1]!
+            if (curr.y === prev.y) {
+              segments.push(`H ${curr.x}`)
+            } else {
+              segments.push(`V ${curr.y}`)
+            }
+          }
+          result.set(edge.edgeId, segments.join(' '))
+          continue
+        }
+
+        // Collision detected: reroute via orthogonal waypoints with sharp corners
+        const waypoints = computeOrthogonalWaypoints(
+          source,
+          target,
+          obstacles,
+          nodePadding,
+          DEFAULT_MAX_ITERATIONS,
+          nodePadding,
+        )
+        result.set(edge.edgeId, waypointsToPath(waypoints, 0))
+      }
+
+      return result
+    }
+  }
+
+  return strategy
 }

@@ -61,12 +61,16 @@ export function segmentIntersectsRect(a: Point, b: Point, r: Rect, margin: numbe
 }
 
 /** Check if an axis-aligned polyline path hits any obstacle */
-export function pathHitsObstacle(path: readonly Point[], obstacles: readonly Rect[]): boolean {
+export function pathHitsObstacle(
+  path: readonly Point[],
+  obstacles: readonly Rect[],
+  margin = 2,
+): boolean {
   for (let i = 0; i < path.length - 1; i++) {
     const a = path[i]!
     const b = path[i + 1]!
     for (const obs of obstacles) {
-      if (segmentIntersectsRect(a, b, obs, 2)) return true
+      if (segmentIntersectsRect(a, b, obs, margin)) return true
     }
   }
   return false
@@ -81,6 +85,7 @@ export function pathLength(points: readonly Point[]): number {
   }
   return len
 }
+
 
 export function simplifyPath(points: readonly Point[]): Point[] {
   if (points.length < 3) return [...points]
@@ -115,7 +120,7 @@ export function roundedCorner(
 
   const legIn = Math.max(Math.abs(cornerX - fromX), Math.abs(cornerY - fromY))
   const legOut = Math.max(Math.abs(toX - cornerX), Math.abs(toY - cornerY))
-  const maxR = Math.min(legIn, legOut, r)
+  const maxR = Math.min(legIn / 2, legOut / 2, r)
 
   if (maxR < 1) return `L ${cornerX} ${cornerY}`
 
@@ -195,14 +200,23 @@ export function detourRoute(
   targetSide: PortSide,
   obstacles: readonly Rect[],
   maxIterations: number,
+  clearance = 10,
 ): Point[] {
   const xValues = new Set<number>([start.x, end.x])
   const yValues = new Set<number>([start.y, end.y])
+
+  // Add midpoint between start and end for more natural routing
+  xValues.add((start.x + end.x) / 2)
+  yValues.add((start.y + end.y) / 2)
+
+  // Use generous spacing (2x clearance) for candidate waypoints so paths
+  // don't hug obstacle boundaries. This gives smooth curves room to breathe.
+  const spacing = clearance * 2
   for (const obs of obstacles) {
-    xValues.add(obs.x - 10)
-    xValues.add(obs.x + obs.w + 10)
-    yValues.add(obs.y - 10)
-    yValues.add(obs.y + obs.h + 10)
+    xValues.add(obs.x - spacing)
+    xValues.add(obs.x + obs.w + spacing)
+    yValues.add(obs.y - spacing)
+    yValues.add(obs.y + obs.h + spacing)
   }
 
   const srcH = sourceSide === 'left' || sourceSide === 'right'
@@ -214,14 +228,18 @@ export function detourRoute(
   const sortedY = [...yValues].sort((a, b) => a - b)
   const sortedX = [...xValues].sort((a, b) => a - b)
 
+  // Use clearance - 1 for path validation so candidates at obstacle edge ± clearance
+  // are not rejected by floating-point boundary effects
+  const validationMargin = clearance - 1
+
   if (srcH) {
     for (const midY of sortedY) {
       if (++iterations > maxIterations) break
       const path = [start, { x: start.x, y: midY }, { x: end.x, y: midY }, end]
-      if (!pathHitsObstacle(path, obstacles)) {
-        const len = pathLength(path)
-        if (len < bestLen) {
-          bestLen = len
+      if (!pathHitsObstacle(path, obstacles, validationMargin)) {
+        const s = pathLength(path)
+        if (s < bestLen) {
+          bestLen = s
           bestPath = path
         }
       }
@@ -236,10 +254,10 @@ export function detourRoute(
           { x: end.x, y: midY },
           end,
         ]
-        if (!pathHitsObstacle(path, obstacles)) {
-          const len = pathLength(path)
-          if (len < bestLen) {
-            bestLen = len
+        if (!pathHitsObstacle(path, obstacles, validationMargin)) {
+          const s = pathLength(path)
+          if (s < bestLen) {
+            bestLen = s
             bestPath = path
           }
         }
@@ -249,10 +267,10 @@ export function detourRoute(
     for (const midX of sortedX) {
       if (++iterations > maxIterations) break
       const path = [start, { x: midX, y: start.y }, { x: midX, y: end.y }, end]
-      if (!pathHitsObstacle(path, obstacles)) {
-        const len = pathLength(path)
-        if (len < bestLen) {
-          bestLen = len
+      if (!pathHitsObstacle(path, obstacles, validationMargin)) {
+        const s = pathLength(path)
+        if (s < bestLen) {
+          bestLen = s
           bestPath = path
         }
       }
@@ -267,10 +285,10 @@ export function detourRoute(
           { x: midX, y: end.y },
           end,
         ]
-        if (!pathHitsObstacle(path, obstacles)) {
-          const len = pathLength(path)
-          if (len < bestLen) {
-            bestLen = len
+        if (!pathHitsObstacle(path, obstacles, validationMargin)) {
+          const s = pathLength(path)
+          if (s < bestLen) {
+            bestLen = s
             bestPath = path
           }
         }
@@ -288,12 +306,13 @@ export function findOrthogonalPath(
   targetSide: PortSide,
   obstacles: readonly Rect[],
   maxIterations: number,
+  clearance = 10,
 ): Point[] {
   const directPath = tryDirectRoute(start, end, sourceSide, targetSide)
-  if (!pathHitsObstacle(directPath, obstacles)) {
+  if (!pathHitsObstacle(directPath, obstacles, clearance)) {
     return directPath
   }
-  return detourRoute(start, end, sourceSide, targetSide, obstacles, maxIterations)
+  return detourRoute(start, end, sourceSide, targetSide, obstacles, maxIterations, clearance)
 }
 
 export function computeOrthogonalWaypoints(
@@ -302,6 +321,7 @@ export function computeOrthogonalWaypoints(
   obstacles: readonly Rect[],
   exitDist: number,
   maxIterations: number,
+  clearance = 10,
 ): Point[] {
   const srcOff = sideOffset(source.side, exitDist)
   const tgtOff = sideOffset(target.side, exitDist)
@@ -310,7 +330,7 @@ export function computeOrthogonalWaypoints(
   const entry: Point = { x: target.x + tgtOff.dx, y: target.y + tgtOff.dy }
 
   const waypoints: Point[] = [{ x: source.x, y: source.y }]
-  const path = findOrthogonalPath(exit, entry, source.side, target.side, obstacles, maxIterations)
+  const path = findOrthogonalPath(exit, entry, source.side, target.side, obstacles, maxIterations, clearance)
   waypoints.push(...path)
   waypoints.push({ x: target.x, y: target.y })
 
@@ -433,10 +453,14 @@ function generalSegmentIntersectsRect(a: Point, b: Point, r: Rect, margin: numbe
 /**
  * Convert waypoints to a smooth multi-segment cubic bezier SVG path
  * using Catmull-Rom to cubic bezier conversion.
+ *
+ * Tangent magnitudes are clamped to a fraction of the shorter adjacent
+ * segment so that long-to-short transitions (e.g. long horizontal run
+ * followed by a short vertical drop) don't overshoot.
  */
 export function catmullRomThroughWaypoints(
   waypoints: readonly Point[],
-  tension = 0.5,
+  tension = 0.3,
 ): string {
   const n = waypoints.length
   if (n < 2) return ''
@@ -448,6 +472,14 @@ export function catmullRomThroughWaypoints(
     return `M ${first.x} ${first.y} L ${last.x} ${last.y}`
   }
 
+  // Pre-compute segment lengths
+  const segLen: number[] = []
+  for (let i = 0; i < n - 1; i++) {
+    const a = waypoints[i]!
+    const b = waypoints[i + 1]!
+    segLen.push(Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2))
+  }
+
   const segments: string[] = [`M ${first.x} ${first.y}`]
   const alpha = tension
 
@@ -457,11 +489,41 @@ export function catmullRomThroughWaypoints(
     const p2 = waypoints[Math.min(n - 1, i + 1)]!
     const p3 = waypoints[Math.min(n - 1, i + 2)]!
 
-    // Catmull-Rom to cubic bezier control points
-    const cp1x = p1.x + (p2.x - p0.x) / (6 / alpha)
-    const cp1y = p1.y + (p2.y - p0.y) / (6 / alpha)
-    const cp2x = p2.x - (p3.x - p1.x) / (6 / alpha)
-    const cp2y = p2.y - (p3.y - p1.y) / (6 / alpha)
+    // Raw Catmull-Rom tangent vectors
+    let t1x = alpha * (p2.x - p0.x) / 6
+    let t1y = alpha * (p2.y - p0.y) / 6
+    let t2x = alpha * (p3.x - p1.x) / 6
+    let t2y = alpha * (p3.y - p1.y) / 6
+
+    // Clamp tangent magnitude to 1/3 of the MINIMUM adjacent segment length.
+    // t1 sits at p1 (start of segment i) — it's influenced by segments i-1 and i.
+    // t2 sits at p2 (end of segment i) — it's influenced by segments i and i+1.
+    // Using the minimum prevents overshoot at long-to-short transitions.
+    const curLen = segLen[i]!
+    const prevLen = i > 0 ? segLen[i - 1]! : curLen
+    const nextLen = i < segLen.length - 1 ? segLen[i + 1]! : curLen
+
+    const maxT1 = Math.min(curLen, prevLen) / 3
+    const maxT2 = Math.min(curLen, nextLen) / 3
+
+    const t1Mag = Math.sqrt(t1x * t1x + t1y * t1y)
+    if (t1Mag > maxT1 && t1Mag > 0) {
+      const scale = maxT1 / t1Mag
+      t1x *= scale
+      t1y *= scale
+    }
+
+    const t2Mag = Math.sqrt(t2x * t2x + t2y * t2y)
+    if (t2Mag > maxT2 && t2Mag > 0) {
+      const scale = maxT2 / t2Mag
+      t2x *= scale
+      t2y *= scale
+    }
+
+    const cp1x = p1.x + t1x
+    const cp1y = p1.y + t1y
+    const cp2x = p2.x - t2x
+    const cp2y = p2.y - t2y
 
     segments.push(`C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`)
   }

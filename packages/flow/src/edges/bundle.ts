@@ -6,6 +6,12 @@ import type {
   EdgeBatchRoutingParams,
 } from '../types/config'
 import type { ComputedPortPosition, PortSide } from '../types/layout'
+import {
+  buildEdgeObstacles,
+  catmullRomThroughWaypoints,
+  computeOrthogonalWaypoints,
+  polylineHitsObstacle,
+} from './obstacle-routing'
 
 export interface BundlingOptions {
   /** Bundle tightness 0-1. Higher pulls edges closer to shared control point. Default: 0.85 */
@@ -16,6 +22,10 @@ export interface BundlingOptions {
   readonly fanDistance?: number
   /** Distance edges travel orthogonal to node before curving. Default: 40 */
   readonly exitDistance?: number
+  /** Re-route edges around node obstacles. Default: true */
+  readonly avoidObstacles?: boolean
+  /** Clearance around obstacles in px. Default: 20 */
+  readonly nodePadding?: number
 }
 
 interface BundleEdge {
@@ -163,11 +173,70 @@ function computeBundledPaths(
   return result
 }
 
+const DEFAULT_NODE_PADDING = 20
+const DEFAULT_MAX_ITERATIONS = 1000
+
+/**
+ * Quick approximation of an SVG path as a polyline for collision testing.
+ * Handles M, L, and C commands. For C (cubic bezier), samples 10 points.
+ */
+function approximatePathAsPolyline(d: string): { x: number; y: number }[] {
+  const points: { x: number; y: number }[] = []
+  // Extract all numbers from the path
+  const tokens = d.match(/[MLCZ]|[-+]?\d*\.?\d+/g)
+  if (!tokens) return points
+
+  let i = 0
+  let cx = 0
+  let cy = 0
+
+  while (i < tokens.length) {
+    const cmd = tokens[i]
+    if (cmd === 'M' || cmd === 'L') {
+      cx = parseFloat(tokens[++i]!)
+      cy = parseFloat(tokens[++i]!)
+      points.push({ x: cx, y: cy })
+    } else if (cmd === 'C') {
+      const cp1x = parseFloat(tokens[++i]!)
+      const cp1y = parseFloat(tokens[++i]!)
+      const cp2x = parseFloat(tokens[++i]!)
+      const cp2y = parseFloat(tokens[++i]!)
+      const ex = parseFloat(tokens[++i]!)
+      const ey = parseFloat(tokens[++i]!)
+      // Sample the cubic bezier
+      const steps = 10
+      for (let s = 1; s <= steps; s++) {
+        const t = s / steps
+        const mt = 1 - t
+        const mt2 = mt * mt
+        const t2 = t * t
+        points.push({
+          x: mt2 * mt * cx + 3 * mt2 * t * cp1x + 3 * mt * t2 * cp2x + t2 * t * ex,
+          y: mt2 * mt * cy + 3 * mt2 * t * cp1y + 3 * mt * t2 * cp2y + t2 * t * ey,
+        })
+      }
+      cx = ex
+      cy = ey
+    } else if (cmd === 'Z') {
+      // close path — ignore
+    } else {
+      // Skip commas and unknown tokens that are actually numbers (coordinates after commands)
+      i++
+      continue
+    }
+    i++
+  }
+
+  return points
+}
+
 export function createBundledStrategy(options: BundlingOptions = {}): EdgeRoutingStrategy {
   const strength = options.strength ?? 0.85
   const minBundleSize = options.minBundleSize ?? 2
   const fanDistance = options.fanDistance ?? 20
   const exitDist = options.exitDistance ?? 40
+  const avoidObstacles = options.avoidObstacles ?? true
+  const nodePadding = options.nodePadding ?? DEFAULT_NODE_PADDING
 
   return {
     computePath(params: EdgeRoutingParams): string {
@@ -199,6 +268,37 @@ export function createBundledStrategy(options: BundlingOptions = {}): EdgeRoutin
           for (const [id, path] of bundled) {
             result.set(id, path)
           }
+        }
+      }
+
+      // When avoidObstacles is enabled, check each computed path for collisions
+      if (avoidObstacles && params.obstacles && params.obstacles.length > 0) {
+        for (const edge of params.edges) {
+          const path = result.get(edge.edgeId)
+          if (!path) continue
+
+          const obstacles = buildEdgeObstacles(params.obstacles, edge.source, edge.target, nodePadding)
+          if (obstacles.length === 0) continue
+
+          // Parse the bezier control points from the SVG path for collision testing
+          // The bundled path is: M sx sy L ex ey C cp1x cp1y, cp2x cp2y, nx ny L tx ty
+          // We approximate the full path as a polyline for collision testing
+          const pathPolyline = approximatePathAsPolyline(path)
+          if (!polylineHitsObstacle(pathPolyline, obstacles)) continue
+
+          // Collision detected: reroute via orthogonal waypoints + smooth curve
+          // Use the bundled strategy's exit distance so the rerouted path
+          // starts at a distance consistent with the bundle shape
+          const rerouteExitDist = Math.max(exitDist, nodePadding)
+          const waypoints = computeOrthogonalWaypoints(
+            edge.source,
+            edge.target,
+            obstacles,
+            rerouteExitDist,
+            DEFAULT_MAX_ITERATIONS,
+            nodePadding,
+          )
+          result.set(edge.edgeId, catmullRomThroughWaypoints(waypoints))
         }
       }
 
