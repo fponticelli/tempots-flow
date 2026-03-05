@@ -35,10 +35,12 @@ export function createOrthogonalStrategy(options?: OrthogonalOptions): EdgeRouti
       const result = new Map<string, string>()
 
       for (const edge of params.edges) {
+        const sourceNodeId = edge.sourceNodeId ?? edge.edgeId
+        const targetNodeId = edge.targetNodeId ?? edge.edgeId
         const edgeObstacles = buildEdgeObstacles(
           params.obstacles ?? [],
-          edge.sourceNodeId,
-          edge.targetNodeId,
+          sourceNodeId,
+          targetNodeId,
           nodePadding,
         )
 
@@ -48,7 +50,7 @@ export function createOrthogonalStrategy(options?: OrthogonalOptions): EdgeRouti
           edgeObstacles,
           nodePadding,
           maxIterations,
-          0,
+          nodePadding,
         )
         result.set(edge.edgeId, waypointsToPath(waypoints, borderRadius))
       }

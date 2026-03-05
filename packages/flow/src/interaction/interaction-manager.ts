@@ -2,7 +2,14 @@ import { prop } from '@tempots/core'
 import type { Prop, Signal } from '@tempots/core'
 import type { InteractionState } from '../types/interaction'
 import { createInitialInteractionState } from '../types/interaction'
-import type { Position, Viewport, Dimensions, PortPlacement, PortOffset, PortSide } from '../types/layout'
+import type {
+  Position,
+  Viewport,
+  Dimensions,
+  PortPlacement,
+  PortOffset,
+  PortSide,
+} from '../types/layout'
 import type { FlowConfig } from '../types/config'
 import type { Graph, GraphNode, GraphEdge } from '../types/graph'
 import type { PanConfig } from './pan-handler'

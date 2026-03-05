@@ -19,6 +19,7 @@ export { createEdgePathsSignal } from './compute-edge-paths'
 export {
   buildEdgeObstacles,
   polylineHitsObstacle,
+  approximatePathAsPolyline,
   catmullRomThroughWaypoints,
   approximateBezierAsPolyline,
   computeOrthogonalWaypoints,

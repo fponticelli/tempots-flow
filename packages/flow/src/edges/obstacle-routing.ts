@@ -235,7 +235,7 @@ export function detourRoute(
 
   // Use clearance - 1 for path validation so candidates at obstacle edge ± clearance
   // are not rejected by floating-point boundary effects
-  const validationMargin = clearance - 1
+  const validationMargin = Math.max(0, clearance - 1)
 
   if (srcH) {
     for (const midY of sortedY) {
@@ -352,7 +352,10 @@ export function computeOrthogonalWaypoints(
 
 // --- New utilities for general-purpose obstacle avoidance ---
 
-/** Convert EdgeBatchRoutingParams obstacles to Rect[], filtering out source/target nodes */
+/**
+ * Convert EdgeBatchRoutingParams obstacles to Rect[], filtering out source/target nodes
+ * and inflating by the requested padding.
+ */
 export function buildEdgeObstacles(
   allObstacles: readonly {
     readonly nodeId: string
@@ -467,8 +470,10 @@ function generalSegmentIntersectsRect(a: Point, b: Point, r: Rect, margin: numbe
 
 /**
  * Compute a rerouted bezier path that avoids obstacles while maintaining
- * a smooth curve shape. Routes a single cubic bezier with control points
- * shifted to clear the relevant obstacles, preserving correct port exit/entry angles.
+ * a smooth curve shape. Only considers obstacles that overlap the
+ * control-handle-inflated bounding box of the edge. Routes a single cubic
+ * bezier with control points shifted to clear the relevant obstacles,
+ * preserving correct port exit/entry angles.
  */
 export function computeReroutedBezier(
   source: ComputedPortPosition,
@@ -480,22 +485,31 @@ export function computeReroutedBezier(
   const sc = sideOffset(source.side, controlOffset)
   const tc = sideOffset(target.side, controlOffset)
 
+  const controlX = [source.x + sc.dx, target.x + tc.dx]
+  const controlY = [source.y + sc.dy, target.y + tc.dy]
+  const spanMinX = Math.min(source.x, target.x) - clearance
+  const spanMaxX = Math.max(source.x, target.x) + clearance
+  const spanMinY = Math.min(source.y, target.y) - clearance
+  const spanMaxY = Math.max(source.y, target.y) + clearance
+  const controlMinX = Math.min(...controlX, spanMinX)
+  const controlMaxX = Math.max(...controlX, spanMaxX)
+  const controlMinY = Math.min(...controlY, spanMinY)
+  const controlMaxY = Math.max(...controlY, spanMaxY)
+
+  // For horizontal-ish edges, consider any obstacle in the X-span (keeps
+  // stacks of obstacles in the path's horizontal range). For vertical edges,
+  // require Y overlap.
   const isVertical =
     source.side === 'top' ||
     source.side === 'bottom' ||
     target.side === 'top' ||
     target.side === 'bottom'
 
-  let relevant: Rect[]
-  if (isVertical) {
-    const minY = Math.min(source.y, target.y) - clearance
-    const maxY = Math.max(source.y, target.y) + clearance
-    relevant = obstacles.filter((obs) => obs.y + obs.h > minY && obs.y < maxY)
-  } else {
-    const minX = Math.min(source.x, target.x) - clearance
-    const maxX = Math.max(source.x, target.x) + clearance
-    relevant = obstacles.filter((obs) => obs.x + obs.w > minX && obs.x < maxX)
-  }
+  const relevant = obstacles.filter((obs) => {
+    const overlapsX = obs.x + obs.w > controlMinX && obs.x < controlMaxX
+    const overlapsY = obs.y + obs.h > controlMinY && obs.y < controlMaxY
+    return isVertical ? overlapsX && overlapsY : overlapsX
+  })
 
   if (relevant.length === 0) {
     return [
@@ -506,89 +520,129 @@ export function computeReroutedBezier(
     ].join(' ')
   }
 
-  if (isVertical) {
-    let obsMinX = Infinity
-    let obsMaxX = -Infinity
-    for (const obs of relevant) {
-      obsMinX = Math.min(obsMinX, obs.x)
-      obsMaxX = Math.max(obsMaxX, obs.x + obs.w)
-    }
+  // Compute bounding box of relevant obstacles only
+  let obsMinY = Infinity
+  let obsMaxY = -Infinity
+  for (const obs of relevant) {
+    obsMinY = Math.min(obsMinY, obs.y)
+    obsMaxY = Math.max(obsMaxY, obs.y + obs.h)
+  }
 
-    const midX = (source.x + target.x) / 2
-    const leftX = obsMinX
-    const rightX = obsMaxX
-    const routeX = Math.abs(midX - leftX) <= Math.abs(midX - rightX) ? leftX : rightX
+  // Determine whether to route above or below.
+  const midY = (source.y + target.y) / 2
+  const aboveY = obsMinY - clearance
+  const belowY = obsMaxY + clearance
+  let routeY = Math.abs(midY - aboveY) <= Math.abs(midY - belowY) ? aboveY : belowY
 
-    const viaY = (source.y + target.y) / 2
-    const dir = source.y < target.y ? 1 : -1
-    const halfSpan = Math.abs(viaY - source.y)
-    const cpDist = Math.max(controlOffset, halfSpan * 0.4)
+  // Two-segment cubic bezier through a via point at routeY.
+  const viaX = (source.x + target.x) / 2
+  const dir = source.x < target.x ? 1 : -1
 
+  // Control point distance proportional to segment span — ensures the curve
+  // stays flat near routeY long enough to clear obstacles horizontally.
+  const halfSpan = Math.abs(viaX - source.x)
+  const cpDist = Math.max(controlOffset, halfSpan * 0.4)
+
+  const buildPath = (ry: number): string => {
     const cp1x = source.x + sc.dx
     const cp1y = source.y + sc.dy
-    const cp2x = routeX
-    let cp2y = viaY - dir * cpDist
+    const cp2x = viaX - dir * cpDist
+    const cp2y = ry
 
-    const cp3x = routeX
-    let cp3y = viaY + dir * cpDist
+    const cp3x = viaX + dir * cpDist
+    const cp3y = ry
     const cp4x = target.x + tc.dx
     const cp4y = target.y + tc.dy
 
-    if (dir === 1) {
-      cp2y = Math.max(source.y, cp2y)
-      cp3y = Math.min(target.y, cp3y)
-    } else {
-      cp2y = Math.min(source.y, cp2y)
-      cp3y = Math.max(target.y, cp3y)
-    }
-
     return [
       `M ${source.x} ${source.y}`,
-      `C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${routeX} ${viaY}`,
-      `C ${cp3x} ${cp3y}, ${cp4x} ${cp4y}, ${target.x} ${target.y}`,
-    ].join(' ')
-  } else {
-    let obsMinY = Infinity
-    let obsMaxY = -Infinity
-    for (const obs of relevant) {
-      obsMinY = Math.min(obsMinY, obs.y)
-      obsMaxY = Math.max(obsMaxY, obs.y + obs.h)
-    }
-
-    const midY = (source.y + target.y) / 2
-    const aboveY = obsMinY - clearance
-    const belowY = obsMaxY + clearance
-    const routeY = Math.abs(midY - aboveY) <= Math.abs(midY - belowY) ? aboveY : belowY
-
-    const viaX = (source.x + target.x) / 2
-    const dir = source.x < target.x ? 1 : -1
-    const halfSpan = Math.abs(viaX - source.x)
-    const cpDist = Math.max(controlOffset, halfSpan * 0.4)
-
-    const cp1x = source.x + sc.dx
-    const cp1y = source.y + sc.dy
-    let cp2x = viaX - dir * cpDist
-    const cp2y = routeY
-
-    let cp3x = viaX + dir * cpDist
-    const cp3y = routeY
-    const cp4x = target.x + tc.dx
-    const cp4y = target.y + tc.dy
-
-    if (dir === 1) {
-      cp2x = Math.max(source.x, cp2x)
-      cp3x = Math.min(target.x, cp3x)
-    } else {
-      cp2x = Math.min(source.x, cp2x)
-      cp3x = Math.max(target.x, cp3x)
-    }
-
-    return [
-      `M ${source.x} ${source.y}`,
-      `C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${viaX} ${routeY}`,
+      `C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${viaX} ${ry}`,
       `C ${cp3x} ${cp3y}, ${cp4x} ${cp4y}, ${target.x} ${target.y}`,
     ].join(' ')
   }
+
+  let path = buildPath(routeY)
+
+  // If the constructed path still grazes obstacles (e.g., tight clearances),
+  // push the route farther away and retry once.
+  if (
+    relevant.length > 0 &&
+    polylineHitsObstacle(approximatePathAsPolyline(path, 20), relevant, Math.max(0, clearance - 1))
+  ) {
+    const bump = clearance || 10
+    routeY = routeY < obsMinY ? obsMinY - bump : obsMaxY + bump
+    path = buildPath(routeY)
+  }
+
+  return path
+}
+
+/**
+ * Approximate a general SVG path (M/L/H/V/C/Q) as a polyline for sampling or
+ * collision checks. Curves are subdivided into `steps` segments.
+ */
+export function approximatePathAsPolyline(d: string, steps = 10): Point[] {
+  const points: Point[] = []
+  const tokens = d.match(/[MLHVCQZ]|[-+]?\d*\.?\d+/g)
+  if (!tokens) return points
+
+  let i = 0
+  let cx = 0
+  let cy = 0
+
+  while (i < tokens.length) {
+    const cmd = tokens[i]
+    if (cmd === 'M' || cmd === 'L') {
+      cx = parseFloat(tokens[++i]!)
+      cy = parseFloat(tokens[++i]!)
+      points.push({ x: cx, y: cy })
+    } else if (cmd === 'H') {
+      cx = parseFloat(tokens[++i]!)
+      points.push({ x: cx, y: cy })
+    } else if (cmd === 'V') {
+      cy = parseFloat(tokens[++i]!)
+      points.push({ x: cx, y: cy })
+    } else if (cmd === 'C') {
+      const cp1x = parseFloat(tokens[++i]!)
+      const cp1y = parseFloat(tokens[++i]!)
+      const cp2x = parseFloat(tokens[++i]!)
+      const cp2y = parseFloat(tokens[++i]!)
+      const ex = parseFloat(tokens[++i]!)
+      const ey = parseFloat(tokens[++i]!)
+      for (let s = 1; s <= steps; s++) {
+        const t = s / steps
+        const mt = 1 - t
+        const mt2 = mt * mt
+        const t2 = t * t
+        points.push({
+          x: mt2 * mt * cx + 3 * mt2 * t * cp1x + 3 * mt * t2 * cp2x + t2 * t * ex,
+          y: mt2 * mt * cy + 3 * mt2 * t * cp1y + 3 * mt * t2 * cp2y + t2 * t * ey,
+        })
+      }
+      cx = ex
+      cy = ey
+    } else if (cmd === 'Q') {
+      const qx = parseFloat(tokens[++i]!)
+      const qy = parseFloat(tokens[++i]!)
+      const ex = parseFloat(tokens[++i]!)
+      const ey = parseFloat(tokens[++i]!)
+      for (let s = 1; s <= steps; s++) {
+        const t = s / steps
+        const mt = 1 - t
+        points.push({
+          x: mt * mt * cx + 2 * mt * t * qx + t * t * ex,
+          y: mt * mt * cy + 2 * mt * t * qy + t * t * ey,
+        })
+      }
+      cx = ex
+      cy = ey
+    } else if (cmd === 'Z') {
+      // close path — ignore
+    }
+    i++
+  }
+
+  return points
 }
 
 /**

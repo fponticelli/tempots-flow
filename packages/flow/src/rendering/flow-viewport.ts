@@ -50,6 +50,8 @@ export interface FlowViewportOptions<N, E> {
   readonly edgeRouting: Signal<EdgeRoutingStrategy>
   readonly transitioning: Signal<boolean>
   readonly allowManualPositioning: Signal<boolean>
+  readonly portPlacement: Signal<PortPlacement>
+  readonly portOffsets: Signal<ReadonlyMap<string, ReadonlyMap<string, PortOffset>>>
   readonly nodeRenderer?: NodeRenderer<N>
   readonly edgeRenderer?: EdgeRenderer<E>
   readonly portRenderer?: PortRenderer
@@ -67,7 +69,6 @@ export interface FlowViewportOptions<N, E> {
   readonly animationsEnabled?: boolean
   readonly gridVisible?: Signal<boolean>
   readonly gridType?: Signal<BackgroundType>
-  readonly portPlacement?: Signal<PortPlacement>
   readonly onPortHover?: (port: PortRef) => void
   readonly onPortLeave?: (port: PortRef) => void
   readonly onEdgeDoubleClick?: (edge: GraphEdge<E>, event: PointerEvent) => void
@@ -105,6 +106,8 @@ export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderab
     transitioning,
     allowManualPositioning,
     nodeRenderer,
+    portPlacement,
+    portOffsets,
   } = options
   const interactionState = interactionManager.state
 
@@ -276,7 +279,15 @@ export function FlowViewport<N, E>(options: FlowViewportOptions<N, E>): Renderab
         options.onNodeDoubleClick,
         options.diagnostics,
       ),
-      ConnectionPreview(interactionState, edgeRouting),
+      ConnectionPreview(
+        interactionState,
+        edgeRouting,
+        graph,
+        positions,
+        dimensions,
+        portPlacement,
+        portOffsets,
+      ),
       SelectionBox(interactionState),
       options.alignmentGuidesEnabled
         ? AlignmentGuidesLayer(interactionManager.alignmentGuides, interactionManager.isDragging)

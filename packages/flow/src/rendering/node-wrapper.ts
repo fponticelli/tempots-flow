@@ -141,7 +141,6 @@ export function NodeWrapper<N, E>(
           const portEl = dot.closest<HTMLElement>('.flow-port')
           if (!portEl) continue
           const portId = portEl.dataset.portid
-          const direction = portEl.dataset.portdirection
           if (!portId) continue
           const dotRect = dot.getBoundingClientRect()
           const nodeRect = el.getBoundingClientRect()

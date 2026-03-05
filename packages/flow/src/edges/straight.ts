@@ -37,10 +37,12 @@ export function createStraightStrategy(options?: StraightOptions): EdgeRoutingSt
 
       for (const edge of params.edges) {
         const { source, target } = edge
+        const sourceNodeId = edge.sourceNodeId ?? edge.edgeId
+        const targetNodeId = edge.targetNodeId ?? edge.edgeId
         const obstacles = buildEdgeObstacles(
           params.obstacles ?? [],
-          edge.sourceNodeId,
-          edge.targetNodeId,
+          sourceNodeId,
+          targetNodeId,
           nodePadding,
         )
 

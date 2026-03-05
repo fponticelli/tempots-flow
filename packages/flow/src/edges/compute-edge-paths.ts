@@ -11,6 +11,7 @@ import type {
 } from '../types/layout'
 import type { EdgeRoutingStrategy } from '../types/config'
 import { computePortPositionsForNode } from './port-positions'
+import { approximatePathAsPolyline } from './obstacle-routing'
 
 const DEFAULT_DIMS: Dimensions = { width: 180, height: 80 }
 const ZERO_POS: Position = { x: 0, y: 0 }
@@ -42,24 +43,22 @@ export function createEdgePathsSignal<N, E>(
         if (!node) return new Map<string, ComputedPortPosition>()
         const pos = posMap.get(nodeId) ?? ZERO_POS
         const dims = dimMap.get(nodeId) ?? DEFAULT_DIMS
+        const fallbackPositions = computePortPositionsForNode(pos, dims, node.ports, placement)
         const offsets = measuredOffsets.get(nodeId)
         if (offsets) {
-          // Use DOM-measured port positions
-          const result = new Map<string, ComputedPortPosition>()
-          for (const port of node.ports) {
-            const offset = offsets.get(port.id)
-            if (offset) {
-              result.set(port.id, {
-                x: pos.x + offset.offsetX,
-                y: pos.y + offset.offsetY,
-                side: offset.side,
-              })
-            }
+          // Use DOM-measured port positions where available, fall back to computed
+          const result = new Map<string, ComputedPortPosition>(fallbackPositions)
+          for (const [portId, offset] of offsets) {
+            result.set(portId, {
+              x: pos.x + offset.offsetX,
+              y: pos.y + offset.offsetY,
+              side: offset.side,
+            })
           }
           cached = result
         } else {
           // Fallback to formula-based positions
-          cached = computePortPositionsForNode(pos, dims, node.ports, placement)
+          cached = fallbackPositions
         }
         portPositionCache.set(nodeId, cached)
       }
@@ -77,9 +76,10 @@ export function createEdgePathsSignal<N, E>(
 
     // Build obstacle list from node positions/dimensions
     const obstacles: { nodeId: string; position: Position; dimensions: Dimensions }[] = []
-    for (const [nodeId, pos] of posMap) {
-      const dims = dimMap.get(nodeId) ?? DEFAULT_DIMS
-      obstacles.push({ nodeId, position: pos, dimensions: dims })
+    for (const node of g.nodes) {
+      const pos = posMap.get(node.id) ?? ZERO_POS
+      const dims = dimMap.get(node.id) ?? DEFAULT_DIMS
+      obstacles.push({ nodeId: node.id, position: pos, dimensions: dims })
     }
 
     // Use batch routing if available, otherwise per-edge
@@ -104,15 +104,40 @@ export function createEdgePathsSignal<N, E>(
         : (pathMap?.get(edge.id) ??
           routingStrategy.computePath({ source: sourcePoint, target: targetPoint }))
 
+      let labelPosition = {
+        x: (sourcePoint.x + targetPoint.x) / 2,
+        y: (sourcePoint.y + targetPoint.y) / 2,
+      }
+
+      const polyline = approximatePathAsPolyline(d, 20)
+      if (polyline.length >= 2) {
+        let total = 0
+        for (let i = 1; i < polyline.length; i++) {
+          const a = polyline[i - 1]!
+          const b = polyline[i]!
+          total += Math.hypot(b.x - a.x, b.y - a.y)
+        }
+        const targetLen = total / 2
+        let accum = 0
+        for (let i = 1; i < polyline.length; i++) {
+          const a = polyline[i - 1]!
+          const b = polyline[i]!
+          const segLen = Math.hypot(b.x - a.x, b.y - a.y)
+          if (accum + segLen >= targetLen) {
+            const t = segLen === 0 ? 0 : (targetLen - accum) / segLen
+            labelPosition = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }
+            break
+          }
+          accum += segLen
+        }
+      }
+
       return {
         edgeId: edge.id,
         d,
         sourcePoint,
         targetPoint,
-        labelPosition: {
-          x: (sourcePoint.x + targetPoint.x) / 2,
-          y: (sourcePoint.y + targetPoint.y) / 2,
-        },
+        labelPosition,
       }
     })
   })

@@ -10,6 +10,16 @@ function targetPort(x: number, y: number): ComputedPortPosition {
   return { x, y, side: 'left' }
 }
 
+function edge(
+  edgeId: string,
+  source: ComputedPortPosition,
+  target: ComputedPortPosition,
+  sourceNodeId = 's',
+  targetNodeId = 't',
+) {
+  return { edgeId, source, target, sourceNodeId, targetNodeId }
+}
+
 describe('createBundledStrategy', () => {
   it('computePath returns a valid SVG path for a single edge', () => {
     const strategy = createBundledStrategy()
@@ -25,9 +35,9 @@ describe('createBundledStrategy', () => {
     const strategy = createBundledStrategy()
     const result = strategy.computeAllPaths!({
       edges: [
-        { edgeId: 'e1', source: sourcePort(0, 0), target: targetPort(200, 100) },
-        { edgeId: 'e2', source: sourcePort(0, 50), target: targetPort(200, 150) },
-        { edgeId: 'e3', source: sourcePort(300, 0), target: targetPort(500, 0) },
+        edge('e1', sourcePort(0, 0), targetPort(200, 100)),
+        edge('e2', sourcePort(0, 50), targetPort(200, 150)),
+        edge('e3', sourcePort(300, 0), targetPort(500, 0)),
       ],
     })
 
@@ -41,8 +51,8 @@ describe('createBundledStrategy', () => {
     const strategy = createBundledStrategy()
     const result = strategy.computeAllPaths!({
       edges: [
-        { edgeId: 'e1', source: sourcePort(0, 0), target: targetPort(200, 0) },
-        { edgeId: 'e2', source: sourcePort(0, 0), target: targetPort(200, 0) },
+        edge('e1', sourcePort(0, 0), targetPort(200, 0)),
+        edge('e2', sourcePort(0, 0), targetPort(200, 0)),
       ],
     })
 
@@ -55,8 +65,8 @@ describe('createBundledStrategy', () => {
     const strategy = createBundledStrategy({ strength: 0.85 })
     const result = strategy.computeAllPaths!({
       edges: [
-        { edgeId: 'e1', source: sourcePort(100, 50), target: targetPort(300, 50) },
-        { edgeId: 'e2', source: sourcePort(100, 50), target: targetPort(300, 50) },
+        edge('e1', sourcePort(100, 50), targetPort(300, 50)),
+        edge('e2', sourcePort(100, 50), targetPort(300, 50)),
       ],
     })
 
@@ -69,7 +79,7 @@ describe('createBundledStrategy', () => {
   it('single edge is not bundled (uses orthogonal bezier)', () => {
     const strategy = createBundledStrategy({ minBundleSize: 2 })
     const result = strategy.computeAllPaths!({
-      edges: [{ edgeId: 'e1', source: sourcePort(0, 0), target: targetPort(200, 0) }],
+      edges: [edge('e1', sourcePort(0, 0), targetPort(200, 0))],
     })
 
     const path = result.get('e1')!
@@ -86,8 +96,8 @@ describe('createBundledStrategy', () => {
     const strategy = createBundledStrategy({ minBundleSize: 3 })
     const result = strategy.computeAllPaths!({
       edges: [
-        { edgeId: 'e1', source: sourcePort(100, 50), target: targetPort(300, 50) },
-        { edgeId: 'e2', source: sourcePort(100, 50), target: targetPort(300, 50) },
+        edge('e1', sourcePort(100, 50), targetPort(300, 50)),
+        edge('e2', sourcePort(100, 50), targetPort(300, 50)),
       ],
     })
 
@@ -105,8 +115,8 @@ describe('createBundledStrategy', () => {
     // so centroid != individual midpoints
     const edges = {
       edges: [
-        { edgeId: 'e1', source: sourcePort(101, 51), target: targetPort(301, 52) },
-        { edgeId: 'e2', source: sourcePort(103, 53), target: targetPort(303, 54) },
+        edge('e1', sourcePort(101, 51), targetPort(301, 52)),
+        edge('e2', sourcePort(103, 53), targetPort(303, 54)),
       ],
     }
 
@@ -123,10 +133,10 @@ describe('createBundledStrategy', () => {
     const result = strategy.computeAllPaths!({
       edges: [
         // These two share same approximate source/target → bundled
-        { edgeId: 'e1', source: sourcePort(100, 50), target: targetPort(300, 50) },
-        { edgeId: 'e2', source: sourcePort(100, 50), target: targetPort(300, 50) },
+        edge('e1', sourcePort(100, 50), targetPort(300, 50)),
+        edge('e2', sourcePort(100, 50), targetPort(300, 50)),
         // This one is separate → not bundled
-        { edgeId: 'e3', source: sourcePort(500, 200), target: targetPort(700, 200) },
+        edge('e3', sourcePort(500, 200), targetPort(700, 200)),
       ],
     })
 
