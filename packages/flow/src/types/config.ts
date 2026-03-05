@@ -92,10 +92,16 @@ export interface EdgeRoutingParams {
 export interface EdgeBatchRoutingParams {
   readonly edges: readonly {
     readonly edgeId: string
+    readonly sourceNodeId: string
+    readonly targetNodeId: string
     readonly source: ComputedPortPosition
     readonly target: ComputedPortPosition
   }[]
-  readonly obstacles?: readonly { readonly position: Position; readonly dimensions: Dimensions }[]
+  readonly obstacles?: readonly {
+    readonly nodeId: string
+    readonly position: Position
+    readonly dimensions: Dimensions
+  }[]
 }
 
 // --- Port rendering ---

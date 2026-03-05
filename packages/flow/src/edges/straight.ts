@@ -37,7 +37,12 @@ export function createStraightStrategy(options?: StraightOptions): EdgeRoutingSt
 
       for (const edge of params.edges) {
         const { source, target } = edge
-        const obstacles = buildEdgeObstacles(params.obstacles ?? [], source, target, nodePadding)
+        const obstacles = buildEdgeObstacles(
+          params.obstacles ?? [],
+          edge.sourceNodeId,
+          edge.targetNodeId,
+          nodePadding,
+        )
 
         if (obstacles.length === 0) {
           result.set(edge.edgeId, `M ${source.x} ${source.y} L ${target.x} ${target.y}`)
@@ -45,8 +50,11 @@ export function createStraightStrategy(options?: StraightOptions): EdgeRoutingSt
         }
 
         // Check if the straight line collides with any obstacle
-        const line = [{ x: source.x, y: source.y }, { x: target.x, y: target.y }]
-        if (!polylineHitsObstacle(line, obstacles)) {
+        const line = [
+          { x: source.x, y: source.y },
+          { x: target.x, y: target.y },
+        ]
+        if (!polylineHitsObstacle(line, obstacles, 0)) {
           result.set(edge.edgeId, `M ${source.x} ${source.y} L ${target.x} ${target.y}`)
           continue
         }
@@ -58,7 +66,7 @@ export function createStraightStrategy(options?: StraightOptions): EdgeRoutingSt
           obstacles,
           nodePadding,
           DEFAULT_MAX_ITERATIONS,
-          nodePadding,
+          0,
         )
         result.set(edge.edgeId, waypointsToPath(waypoints, 0))
       }

@@ -59,7 +59,10 @@ function computeBezierPath(
 }
 
 /** @deprecated Use `createBezierStrategy(options)` with BezierOptions instead */
-export function createBezierStrategy(curvature?: number, controlOffset?: number): EdgeRoutingStrategy
+export function createBezierStrategy(
+  curvature?: number,
+  controlOffset?: number,
+): EdgeRoutingStrategy
 export function createBezierStrategy(options?: BezierOptions): EdgeRoutingStrategy
 export function createBezierStrategy(
   optionsOrCurvature?: BezierOptions | number,
@@ -95,7 +98,12 @@ export function createBezierStrategy(
         const path = computeBezierPath(source, target, curvature, controlOffset)
 
         // Check if the bezier curve collides with any obstacle
-        const obstacles = buildEdgeObstacles(params.obstacles ?? [], source, target, nodePadding)
+        const obstacles = buildEdgeObstacles(
+          params.obstacles ?? [],
+          edge.sourceNodeId,
+          edge.targetNodeId,
+          nodePadding,
+        )
 
         if (obstacles.length === 0) {
           result.set(edge.edgeId, path)
@@ -117,16 +125,13 @@ export function createBezierStrategy(
 
         const polyline = approximateBezierAsPolyline(p0, p1, p2, p3)
 
-        if (!polylineHitsObstacle(polyline, obstacles)) {
+        if (!polylineHitsObstacle(polyline, obstacles, 0)) {
           result.set(edge.edgeId, path)
           continue
         }
 
         // Collision detected: reroute via smooth bezier that avoids obstacles
-        result.set(
-          edge.edgeId,
-          computeReroutedBezier(source, target, obstacles, controlOffset, nodePadding),
-        )
+        result.set(edge.edgeId, computeReroutedBezier(source, target, obstacles, controlOffset, 0))
       }
 
       return result

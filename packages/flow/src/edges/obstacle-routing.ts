@@ -86,7 +86,6 @@ export function pathLength(points: readonly Point[]): number {
   return len
 }
 
-
 export function simplifyPath(points: readonly Point[]): Point[] {
   if (points.length < 3) return [...points]
   const result: Point[] = [points[0]!]
@@ -173,7 +172,10 @@ export function tryDirectRoute(
     // Nearly same Y -> straight horizontal line
     if (Math.abs(start.y - end.y) < SNAP_THRESHOLD) {
       const y = (start.y + end.y) / 2
-      return [{ x: start.x, y }, { x: end.x, y }]
+      return [
+        { x: start.x, y },
+        { x: end.x, y },
+      ]
     }
     const midX = (start.x + end.x) / 2
     return [start, { x: midX, y: start.y }, { x: midX, y: end.y }, end]
@@ -182,7 +184,10 @@ export function tryDirectRoute(
     // Nearly same X -> straight vertical line
     if (Math.abs(start.x - end.x) < SNAP_THRESHOLD) {
       const x = (start.x + end.x) / 2
-      return [{ x, y: start.y }, { x, y: end.y }]
+      return [
+        { x, y: start.y },
+        { x, y: end.y },
+      ]
     }
     const midY = (start.y + end.y) / 2
     return [start, { x: start.x, y: midY }, { x: end.x, y: midY }, end]
@@ -330,7 +335,15 @@ export function computeOrthogonalWaypoints(
   const entry: Point = { x: target.x + tgtOff.dx, y: target.y + tgtOff.dy }
 
   const waypoints: Point[] = [{ x: source.x, y: source.y }]
-  const path = findOrthogonalPath(exit, entry, source.side, target.side, obstacles, maxIterations, clearance)
+  const path = findOrthogonalPath(
+    exit,
+    entry,
+    source.side,
+    target.side,
+    obstacles,
+    maxIterations,
+    clearance,
+  )
   waypoints.push(...path)
   waypoints.push({ x: target.x, y: target.y })
 
@@ -341,22 +354,24 @@ export function computeOrthogonalWaypoints(
 
 /** Convert EdgeBatchRoutingParams obstacles to Rect[], filtering out source/target nodes */
 export function buildEdgeObstacles(
-  allObstacles: readonly { readonly position: { x: number; y: number }; readonly dimensions: { width: number; height: number } }[],
-  sourcePoint: Point,
-  targetPoint: Point,
+  allObstacles: readonly {
+    readonly nodeId: string
+    readonly position: { x: number; y: number }
+    readonly dimensions: { width: number; height: number }
+  }[],
+  sourceNodeId: string,
+  targetNodeId: string,
   padding: number,
 ): Rect[] {
-  const rects: Rect[] = allObstacles.map((obs) => ({
-    x: obs.position.x,
-    y: obs.position.y,
-    w: obs.dimensions.width,
-    h: obs.dimensions.height,
-  }))
-  return rects.filter((r) => {
-    const srcInside = pointInRect(sourcePoint, r, padding)
-    const tgtInside = pointInRect(targetPoint, r, padding)
-    return !srcInside && !tgtInside
-  })
+  const rects: Rect[] = allObstacles
+    .filter((obs) => obs.nodeId !== sourceNodeId && obs.nodeId !== targetNodeId)
+    .map((obs) => ({
+      x: obs.position.x - padding,
+      y: obs.position.y - padding,
+      w: obs.dimensions.width + padding * 2,
+      h: obs.dimensions.height + padding * 2,
+    }))
+  return rects
 }
 
 /** Approximate a cubic bezier as a polyline using de Casteljau subdivision */
@@ -452,10 +467,8 @@ function generalSegmentIntersectsRect(a: Point, b: Point, r: Rect, margin: numbe
 
 /**
  * Compute a rerouted bezier path that avoids obstacles while maintaining
- * a smooth curve shape. Only considers obstacles that overlap the
- * horizontal range between source and target (relevant obstacles).
- * Routes a single cubic bezier with control points shifted to clear
- * the relevant obstacles, preserving correct port exit/entry angles.
+ * a smooth curve shape. Routes a single cubic bezier with control points
+ * shifted to clear the relevant obstacles, preserving correct port exit/entry angles.
  */
 export function computeReroutedBezier(
   source: ComputedPortPosition,
@@ -467,13 +480,22 @@ export function computeReroutedBezier(
   const sc = sideOffset(source.side, controlOffset)
   const tc = sideOffset(target.side, controlOffset)
 
-  // Filter to only obstacles that overlap the horizontal range of the edge.
-  // Distant obstacles shouldn't affect the route.
-  const minX = Math.min(source.x, target.x) - clearance
-  const maxX = Math.max(source.x, target.x) + clearance
-  const relevant = obstacles.filter(
-    (obs) => obs.x + obs.w > minX && obs.x < maxX,
-  )
+  const isVertical =
+    source.side === 'top' ||
+    source.side === 'bottom' ||
+    target.side === 'top' ||
+    target.side === 'bottom'
+
+  let relevant: Rect[]
+  if (isVertical) {
+    const minY = Math.min(source.y, target.y) - clearance
+    const maxY = Math.max(source.y, target.y) + clearance
+    relevant = obstacles.filter((obs) => obs.y + obs.h > minY && obs.y < maxY)
+  } else {
+    const minX = Math.min(source.x, target.x) - clearance
+    const maxX = Math.max(source.x, target.x) + clearance
+    relevant = obstacles.filter((obs) => obs.x + obs.w > minX && obs.x < maxX)
+  }
 
   if (relevant.length === 0) {
     return [
@@ -484,49 +506,73 @@ export function computeReroutedBezier(
     ].join(' ')
   }
 
-  // Compute bounding box of relevant obstacles only
-  let obsMinY = Infinity
-  let obsMaxY = -Infinity
-  for (const obs of relevant) {
-    obsMinY = Math.min(obsMinY, obs.y)
-    obsMaxY = Math.max(obsMaxY, obs.y + obs.h)
+  if (isVertical) {
+    let obsMinX = Infinity
+    let obsMaxX = -Infinity
+    for (const obs of relevant) {
+      obsMinX = Math.min(obsMinX, obs.x)
+      obsMaxX = Math.max(obsMaxX, obs.x + obs.w)
+    }
+
+    const midX = (source.x + target.x) / 2
+    const leftX = obsMinX - clearance
+    const rightX = obsMaxX + clearance
+    const routeX = Math.abs(midX - leftX) <= Math.abs(midX - rightX) ? leftX : rightX
+
+    const viaY = (source.y + target.y) / 2
+    const dir = source.y < target.y ? 1 : -1
+    const halfSpan = Math.abs(viaY - source.y)
+    const cpDist = Math.max(controlOffset, halfSpan * 0.4)
+
+    const cp1x = source.x + sc.dx
+    const cp1y = source.y + sc.dy
+    const cp2x = routeX
+    const cp2y = viaY - dir * cpDist
+
+    const cp3x = routeX
+    const cp3y = viaY + dir * cpDist
+    const cp4x = target.x + tc.dx
+    const cp4y = target.y + tc.dy
+
+    return [
+      `M ${source.x} ${source.y}`,
+      `C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${routeX} ${viaY}`,
+      `C ${cp3x} ${cp3y}, ${cp4x} ${cp4y}, ${target.x} ${target.y}`,
+    ].join(' ')
+  } else {
+    let obsMinY = Infinity
+    let obsMaxY = -Infinity
+    for (const obs of relevant) {
+      obsMinY = Math.min(obsMinY, obs.y)
+      obsMaxY = Math.max(obsMaxY, obs.y + obs.h)
+    }
+
+    const midY = (source.y + target.y) / 2
+    const aboveY = obsMinY - clearance
+    const belowY = obsMaxY + clearance
+    const routeY = Math.abs(midY - aboveY) <= Math.abs(midY - belowY) ? aboveY : belowY
+
+    const viaX = (source.x + target.x) / 2
+    const dir = source.x < target.x ? 1 : -1
+    const halfSpan = Math.abs(viaX - source.x)
+    const cpDist = Math.max(controlOffset, halfSpan * 0.4)
+
+    const cp1x = source.x + sc.dx
+    const cp1y = source.y + sc.dy
+    const cp2x = viaX - dir * cpDist
+    const cp2y = routeY
+
+    const cp3x = viaX + dir * cpDist
+    const cp3y = routeY
+    const cp4x = target.x + tc.dx
+    const cp4y = target.y + tc.dy
+
+    return [
+      `M ${source.x} ${source.y}`,
+      `C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${viaX} ${routeY}`,
+      `C ${cp3x} ${cp3y}, ${cp4x} ${cp4y}, ${target.x} ${target.y}`,
+    ].join(' ')
   }
-
-  // Determine whether to route above or below.
-  const midY = (source.y + target.y) / 2
-  const aboveY = obsMinY - clearance
-  const belowY = obsMaxY + clearance
-  const routeY = Math.abs(midY - aboveY) <= Math.abs(midY - belowY) ? aboveY : belowY
-
-  // Two-segment cubic bezier through a via point at routeY.
-  // A single bezier can't avoid obstacles when source and target are on
-  // opposite sides vertically — the curve must pass through the obstacle zone.
-  // Two segments with a via point above/below all obstacles solves this.
-  const viaX = (source.x + target.x) / 2
-  const dir = source.x < target.x ? 1 : -1
-
-  // Control point distance proportional to segment span — ensures the curve
-  // stays flat near routeY long enough to clear obstacles horizontally.
-  const halfSpan = Math.abs(viaX - source.x)
-  const cpDist = Math.max(controlOffset, halfSpan * 0.4)
-
-  // Segment 1: source → via
-  const cp1x = source.x + sc.dx
-  const cp1y = source.y + sc.dy
-  const cp2x = viaX - dir * cpDist
-  const cp2y = routeY
-
-  // Segment 2: via → target
-  const cp3x = viaX + dir * cpDist
-  const cp3y = routeY
-  const cp4x = target.x + tc.dx
-  const cp4y = target.y + tc.dy
-
-  return [
-    `M ${source.x} ${source.y}`,
-    `C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${viaX} ${routeY}`,
-    `C ${cp3x} ${cp3y}, ${cp4x} ${cp4y}, ${target.x} ${target.y}`,
-  ].join(' ')
 }
 
 /**
@@ -537,10 +583,7 @@ export function computeReroutedBezier(
  * segment so that long-to-short transitions (e.g. long horizontal run
  * followed by a short vertical drop) don't overshoot.
  */
-export function catmullRomThroughWaypoints(
-  waypoints: readonly Point[],
-  tension = 0.3,
-): string {
+export function catmullRomThroughWaypoints(waypoints: readonly Point[], tension = 0.3): string {
   const n = waypoints.length
   if (n < 2) return ''
 
@@ -569,10 +612,10 @@ export function catmullRomThroughWaypoints(
     const p3 = waypoints[Math.min(n - 1, i + 2)]!
 
     // Raw Catmull-Rom tangent vectors
-    let t1x = alpha * (p2.x - p0.x) / 6
-    let t1y = alpha * (p2.y - p0.y) / 6
-    let t2x = alpha * (p3.x - p1.x) / 6
-    let t2y = alpha * (p3.y - p1.y) / 6
+    let t1x = (alpha * (p2.x - p0.x)) / 6
+    let t1y = (alpha * (p2.y - p0.y)) / 6
+    let t2x = (alpha * (p3.x - p1.x)) / 6
+    let t2y = (alpha * (p3.y - p1.y)) / 6
 
     // Clamp tangent magnitude to 1/3 of the MINIMUM adjacent segment length.
     // t1 sits at p1 (start of segment i) — it's influenced by segments i-1 and i.

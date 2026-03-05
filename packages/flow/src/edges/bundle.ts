@@ -7,9 +7,11 @@ import type {
 } from '../types/config'
 import type { ComputedPortPosition, PortSide } from '../types/layout'
 import {
+  approximateBezierAsPolyline,
   buildEdgeObstacles,
   computeReroutedBezier,
   polylineHitsObstacle,
+  type Point,
 } from './obstacle-routing'
 
 export interface BundlingOptions {
@@ -29,6 +31,8 @@ export interface BundlingOptions {
 
 interface BundleEdge {
   readonly edgeId: string
+  readonly sourceNodeId: string
+  readonly targetNodeId: string
   readonly source: ComputedPortPosition
   readonly target: ComputedPortPosition
 }
@@ -62,7 +66,7 @@ function orthogonalBezier(
   source: ComputedPortPosition,
   target: ComputedPortPosition,
   exitDist: number,
-): string {
+): { path: string; polyline: Point[] } {
   const srcOff = sideOffset(source.side, exitDist)
   const tgtOff = sideOffset(target.side, exitDist)
 
@@ -87,12 +91,28 @@ function orthogonalBezier(
   const cp2x = nx + cp2Off.dx
   const cp2y = ny + cp2Off.dy
 
-  return [
-    `M ${source.x} ${source.y}`,
-    `L ${ex} ${ey}`,
-    `C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${nx} ${ny}`,
-    `L ${target.x} ${target.y}`,
-  ].join(' ')
+  const polyline = [
+    { x: source.x, y: source.y },
+    { x: ex, y: ey },
+    ...approximateBezierAsPolyline(
+      { x: ex, y: ey },
+      { x: cp1x, y: cp1y },
+      { x: cp2x, y: cp2y },
+      { x: nx, y: ny },
+    ),
+    { x: nx, y: ny },
+    { x: target.x, y: target.y },
+  ]
+
+  return {
+    path: [
+      `M ${source.x} ${source.y}`,
+      `L ${ex} ${ey}`,
+      `C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${nx} ${ny}`,
+      `L ${target.x} ${target.y}`,
+    ].join(' '),
+    polyline,
+  }
 }
 
 function computeBundledPaths(
@@ -100,8 +120,8 @@ function computeBundledPaths(
   strength: number,
   fanDistance: number,
   exitDist: number,
-): ReadonlyMap<string, string> {
-  const result = new Map<string, string>()
+): ReadonlyMap<string, { path: string; polyline: Point[] }> {
+  const result = new Map<string, { path: string; polyline: Point[] }>()
 
   const firstEdge = group[0]
   if (!firstEdge) return result
@@ -158,75 +178,34 @@ function computeBundledPaths(
     const cp2x = natCp2x + (centroidX - natCp2x) * strength + perpX * fanOffset
     const cp2y = natCp2y + (centroidY - natCp2y) * strength + perpY * fanOffset
 
-    result.set(
-      edge.edgeId,
-      [
+    const polyline = [
+      { x: edge.source.x, y: edge.source.y },
+      { x: ex, y: ey },
+      ...approximateBezierAsPolyline(
+        { x: ex, y: ey },
+        { x: cp1x, y: cp1y },
+        { x: cp2x, y: cp2y },
+        { x: nx, y: ny },
+      ),
+      { x: nx, y: ny },
+      { x: edge.target.x, y: edge.target.y },
+    ]
+
+    result.set(edge.edgeId, {
+      path: [
         `M ${edge.source.x} ${edge.source.y}`,
         `L ${ex} ${ey}`,
         `C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${nx} ${ny}`,
         `L ${edge.target.x} ${edge.target.y}`,
       ].join(' '),
-    )
+      polyline,
+    })
   }
 
   return result
 }
 
 const DEFAULT_NODE_PADDING = 20
-
-/**
- * Quick approximation of an SVG path as a polyline for collision testing.
- * Handles M, L, and C commands. For C (cubic bezier), samples 10 points.
- */
-function approximatePathAsPolyline(d: string): { x: number; y: number }[] {
-  const points: { x: number; y: number }[] = []
-  // Extract all numbers from the path
-  const tokens = d.match(/[MLCZ]|[-+]?\d*\.?\d+/g)
-  if (!tokens) return points
-
-  let i = 0
-  let cx = 0
-  let cy = 0
-
-  while (i < tokens.length) {
-    const cmd = tokens[i]
-    if (cmd === 'M' || cmd === 'L') {
-      cx = parseFloat(tokens[++i]!)
-      cy = parseFloat(tokens[++i]!)
-      points.push({ x: cx, y: cy })
-    } else if (cmd === 'C') {
-      const cp1x = parseFloat(tokens[++i]!)
-      const cp1y = parseFloat(tokens[++i]!)
-      const cp2x = parseFloat(tokens[++i]!)
-      const cp2y = parseFloat(tokens[++i]!)
-      const ex = parseFloat(tokens[++i]!)
-      const ey = parseFloat(tokens[++i]!)
-      // Sample the cubic bezier
-      const steps = 10
-      for (let s = 1; s <= steps; s++) {
-        const t = s / steps
-        const mt = 1 - t
-        const mt2 = mt * mt
-        const t2 = t * t
-        points.push({
-          x: mt2 * mt * cx + 3 * mt2 * t * cp1x + 3 * mt * t2 * cp2x + t2 * t * ex,
-          y: mt2 * mt * cy + 3 * mt2 * t * cp1y + 3 * mt * t2 * cp2y + t2 * t * ey,
-        })
-      }
-      cx = ex
-      cy = ey
-    } else if (cmd === 'Z') {
-      // close path — ignore
-    } else {
-      // Skip commas and unknown tokens that are actually numbers (coordinates after commands)
-      i++
-      continue
-    }
-    i++
-  }
-
-  return points
-}
 
 export function createBundledStrategy(options: BundlingOptions = {}): EdgeRoutingStrategy {
   const strength = options.strength ?? 0.85
@@ -238,11 +217,12 @@ export function createBundledStrategy(options: BundlingOptions = {}): EdgeRoutin
 
   return {
     computePath(params: EdgeRoutingParams): string {
-      return orthogonalBezier(params.source, params.target, exitDist)
+      return orthogonalBezier(params.source, params.target, exitDist).path
     },
 
     computeAllPaths(params: EdgeBatchRoutingParams): ReadonlyMap<string, string> {
       const result = new Map<string, string>()
+      const builtData = new Map<string, { path: string; polyline: Point[] }>()
 
       // Group edges by source-target node pair
       const groups = new Map<string, BundleEdge[]>()
@@ -259,37 +239,39 @@ export function createBundledStrategy(options: BundlingOptions = {}): EdgeRoutin
       for (const group of groups.values()) {
         if (group.length < minBundleSize) {
           for (const edge of group) {
-            result.set(edge.edgeId, orthogonalBezier(edge.source, edge.target, exitDist))
+            const ob = orthogonalBezier(edge.source, edge.target, exitDist)
+            builtData.set(edge.edgeId, ob)
           }
         } else {
           const bundled = computeBundledPaths(group, strength, fanDistance, exitDist)
-          for (const [id, path] of bundled) {
-            result.set(id, path)
+          for (const [id, data] of bundled) {
+            builtData.set(id, data)
           }
         }
       }
 
-      // When avoidObstacles is enabled, check each computed path for collisions
-      if (avoidObstacles && params.obstacles && params.obstacles.length > 0) {
-        for (const edge of params.edges) {
-          const path = result.get(edge.edgeId)
-          if (!path) continue
+      for (const edge of params.edges) {
+        const data = builtData.get(edge.edgeId)
+        if (!data) continue
 
-          const obstacles = buildEdgeObstacles(params.obstacles, edge.source, edge.target, nodePadding)
-          if (obstacles.length === 0) continue
-
-          // Parse the bezier control points from the SVG path for collision testing
-          // The bundled path is: M sx sy L ex ey C cp1x cp1y, cp2x cp2y, nx ny L tx ty
-          // We approximate the full path as a polyline for collision testing
-          const pathPolyline = approximatePathAsPolyline(path)
-          if (!polylineHitsObstacle(pathPolyline, obstacles)) continue
-
-          // Collision detected: reroute via smooth bezier that avoids obstacles
-          result.set(
-            edge.edgeId,
-            computeReroutedBezier(edge.source, edge.target, obstacles, exitDist, nodePadding),
+        if (avoidObstacles && params.obstacles && params.obstacles.length > 0) {
+          const obstacles = buildEdgeObstacles(
+            params.obstacles,
+            edge.sourceNodeId,
+            edge.targetNodeId,
+            nodePadding,
           )
+          if (obstacles.length > 0 && polylineHitsObstacle(data.polyline, obstacles, nodePadding)) {
+            // Collision detected: reroute via smooth bezier that avoids obstacles
+            result.set(
+              edge.edgeId,
+              computeReroutedBezier(edge.source, edge.target, obstacles, exitDist, nodePadding),
+            )
+            continue
+          }
         }
+
+        result.set(edge.edgeId, data.path)
       }
 
       return result

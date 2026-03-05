@@ -1027,7 +1027,7 @@ function expandSourceNodes() {
 function NodeInfoPanel(): TNode {
   const firstSelectedId = flow.selectedNodeIds.map((ids): string | null => {
     const arr = [...ids]
-    return arr.length > 0 ? arr[0] : null
+    return arr.length > 0 ? arr[0]! : null
   })
 
   // Reactively derive position/dimension text from edgePaths (which updates on position changes)

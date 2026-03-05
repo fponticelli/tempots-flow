@@ -154,12 +154,17 @@ export function createStepStrategy(options?: StepOptions): EdgeRoutingStrategy {
 
       for (const edge of params.edges) {
         const { source, target } = edge
-        const obstacles = buildEdgeObstacles(params.obstacles ?? [], source, target, nodePadding)
+        const obstacles = buildEdgeObstacles(
+          params.obstacles ?? [],
+          edge.sourceNodeId,
+          edge.targetNodeId,
+          nodePadding,
+        )
 
         // Compute step waypoints first
         const stepWaypoints = computeStepWaypoints(source, target, offset)
 
-        if (obstacles.length === 0 || !pathHitsObstacle(stepWaypoints, obstacles)) {
+        if (obstacles.length === 0 || !pathHitsObstacle(stepWaypoints, obstacles, 0)) {
           // No collision — use standard step path
           const first = stepWaypoints[0]
           if (!first) {
@@ -187,7 +192,7 @@ export function createStepStrategy(options?: StepOptions): EdgeRoutingStrategy {
           obstacles,
           nodePadding,
           DEFAULT_MAX_ITERATIONS,
-          nodePadding,
+          0,
         )
         result.set(edge.edgeId, waypointsToPath(waypoints, 0))
       }

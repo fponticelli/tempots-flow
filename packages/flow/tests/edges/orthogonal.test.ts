@@ -72,11 +72,15 @@ describe('createOrthogonalStrategy', () => {
       edges: [
         {
           edgeId: 'e1',
+          sourceNodeId: 's',
+          targetNodeId: 't',
           source: { x: 0, y: 50, side: 'right' as const },
           target: { x: 300, y: 50, side: 'left' as const },
         },
       ],
-      obstacles: [{ position: { x: 100, y: 0 }, dimensions: { width: 100, height: 100 } }],
+      obstacles: [
+        { nodeId: 'obs1', position: { x: 100, y: 0 }, dimensions: { width: 100, height: 100 } },
+      ],
     }
     const smallPath = small.computeAllPaths!(batchParams).get('e1')!
     const largePath = large.computeAllPaths!(batchParams).get('e1')!
@@ -90,11 +94,15 @@ describe('createOrthogonalStrategy', () => {
         edges: [
           {
             edgeId: 'e1',
+            sourceNodeId: 's1',
+            targetNodeId: 't1',
             source: { x: 0, y: 0, side: 'right' },
             target: { x: 200, y: 0, side: 'left' },
           },
           {
             edgeId: 'e2',
+            sourceNodeId: 's2',
+            targetNodeId: 't2',
             source: { x: 0, y: 100, side: 'right' },
             target: { x: 200, y: 100, side: 'left' },
           },
@@ -110,17 +118,23 @@ describe('createOrthogonalStrategy', () => {
         edges: [
           {
             edgeId: 'e1',
+            sourceNodeId: 's1',
+            targetNodeId: 't1',
             source: { x: 0, y: 50, side: 'right' },
             target: { x: 300, y: 50, side: 'left' },
           },
         ],
-        obstacles: [{ position: { x: 100, y: 0 }, dimensions: { width: 100, height: 100 } }],
+        obstacles: [
+          { nodeId: 'obs1', position: { x: 100, y: 0 }, dimensions: { width: 100, height: 100 } },
+        ],
       })
 
       const withoutObstacles = strategy.computeAllPaths!({
         edges: [
           {
             edgeId: 'e1',
+            sourceNodeId: 's1',
+            targetNodeId: 't1',
             source: { x: 0, y: 50, side: 'right' },
             target: { x: 300, y: 50, side: 'left' },
           },
@@ -137,13 +151,15 @@ describe('createOrthogonalStrategy', () => {
         edges: [
           {
             edgeId: 'e1',
+            sourceNodeId: 'source',
+            targetNodeId: 'target',
             source: { x: 90, y: 40, side: 'right' },
             target: { x: 290, y: 40, side: 'left' },
           },
         ],
         obstacles: [
-          { position: { x: 0, y: 0 }, dimensions: { width: 100, height: 80 } },
-          { position: { x: 200, y: 0 }, dimensions: { width: 100, height: 80 } },
+          { nodeId: 'source', position: { x: 0, y: 0 }, dimensions: { width: 100, height: 80 } },
+          { nodeId: 'target', position: { x: 200, y: 0 }, dimensions: { width: 100, height: 80 } },
         ],
       })
       expect(result.get('e1')).toMatch(/^M /)
@@ -154,13 +170,15 @@ describe('createOrthogonalStrategy', () => {
         edges: [
           {
             edgeId: 'e1',
+            sourceNodeId: 's',
+            targetNodeId: 't',
             source: { x: 0, y: 100, side: 'right' },
             target: { x: 500, y: 100, side: 'left' },
           },
         ],
         obstacles: [
-          { position: { x: 100, y: 50 }, dimensions: { width: 80, height: 100 } },
-          { position: { x: 300, y: 50 }, dimensions: { width: 80, height: 100 } },
+          { nodeId: 'o1', position: { x: 100, y: 50 }, dimensions: { width: 80, height: 100 } },
+          { nodeId: 'o2', position: { x: 300, y: 50 }, dimensions: { width: 80, height: 100 } },
         ],
       })
       expect(result.get('e1')).toMatch(/^M /)
@@ -172,11 +190,15 @@ describe('createOrthogonalStrategy', () => {
         edges: [
           {
             edgeId: 'e1',
+            sourceNodeId: 's',
+            targetNodeId: 't',
             source: { x: 0, y: 50, side: 'right' },
             target: { x: 300, y: 50, side: 'left' },
           },
         ],
-        obstacles: [{ position: { x: 50, y: 0 }, dimensions: { width: 200, height: 100 } }],
+        obstacles: [
+          { nodeId: 'obs1', position: { x: 50, y: 0 }, dimensions: { width: 200, height: 100 } },
+        ],
       })
       // Should still produce a valid path (falls back to direct route)
       expect(result.get('e1')).toMatch(/^M /)

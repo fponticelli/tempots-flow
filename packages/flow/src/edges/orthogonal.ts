@@ -3,12 +3,7 @@ import type {
   EdgeRoutingParams,
   EdgeBatchRoutingParams,
 } from '../types/config'
-import {
-  type Rect,
-  pointInRect,
-  computeOrthogonalWaypoints,
-  waypointsToPath,
-} from './obstacle-routing'
+import { buildEdgeObstacles, computeOrthogonalWaypoints, waypointsToPath } from './obstacle-routing'
 
 export interface OrthogonalOptions {
   /** Corner rounding radius. Default: 8 */
@@ -38,20 +33,14 @@ export function createOrthogonalStrategy(options?: OrthogonalOptions): EdgeRouti
 
     computeAllPaths(params: EdgeBatchRoutingParams): ReadonlyMap<string, string> {
       const result = new Map<string, string>()
-      const obstacles: Rect[] =
-        params.obstacles?.map((obs) => ({
-          x: obs.position.x,
-          y: obs.position.y,
-          w: obs.dimensions.width,
-          h: obs.dimensions.height,
-        })) ?? []
 
       for (const edge of params.edges) {
-        const edgeObstacles = obstacles.filter((obs) => {
-          const srcInside = pointInRect({ x: edge.source.x, y: edge.source.y }, obs, nodePadding)
-          const tgtInside = pointInRect({ x: edge.target.x, y: edge.target.y }, obs, nodePadding)
-          return !srcInside && !tgtInside
-        })
+        const edgeObstacles = buildEdgeObstacles(
+          params.obstacles ?? [],
+          edge.sourceNodeId,
+          edge.targetNodeId,
+          nodePadding,
+        )
 
         const waypoints = computeOrthogonalWaypoints(
           edge.source,
@@ -59,6 +48,7 @@ export function createOrthogonalStrategy(options?: OrthogonalOptions): EdgeRouti
           edgeObstacles,
           nodePadding,
           maxIterations,
+          0,
         )
         result.set(edge.edgeId, waypointsToPath(waypoints, borderRadius))
       }
