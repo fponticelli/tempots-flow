@@ -22,6 +22,7 @@ export {
   catmullRomThroughWaypoints,
   approximateBezierAsPolyline,
   computeOrthogonalWaypoints,
+  computeReroutedBezier,
   waypointsToPath,
 } from './obstacle-routing'
 export type { Rect as ObstacleRect, Point as RoutePoint } from './obstacle-routing'

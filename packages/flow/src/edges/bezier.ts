@@ -7,8 +7,7 @@ import type { ComputedPortPosition, PortSide } from '../types/layout'
 import {
   approximateBezierAsPolyline,
   buildEdgeObstacles,
-  catmullRomThroughWaypoints,
-  computeOrthogonalWaypoints,
+  computeReroutedBezier,
   polylineHitsObstacle,
 } from './obstacle-routing'
 
@@ -26,7 +25,6 @@ export interface BezierOptions {
 const DEFAULT_CURVATURE = 0.5
 const MIN_CONTROL_OFFSET = 30
 const DEFAULT_NODE_PADDING = 20
-const DEFAULT_MAX_ITERATIONS = 1000
 
 function controlPointOffset(pos: ComputedPortPosition, offset: number): { dx: number; dy: number } {
   const map: Record<PortSide, { dx: number; dy: number }> = {
@@ -124,19 +122,11 @@ export function createBezierStrategy(
           continue
         }
 
-        // Collision detected: reroute via orthogonal waypoints + smooth curve
-        // Use the bezier's natural control offset as exit distance so the
-        // rerouted path starts at a distance consistent with the curve shape
-        const exitDist = Math.max(controlOffset, nodePadding)
-        const waypoints = computeOrthogonalWaypoints(
-          source,
-          target,
-          obstacles,
-          exitDist,
-          DEFAULT_MAX_ITERATIONS,
-          nodePadding,
+        // Collision detected: reroute via smooth bezier that avoids obstacles
+        result.set(
+          edge.edgeId,
+          computeReroutedBezier(source, target, obstacles, controlOffset, nodePadding),
         )
-        result.set(edge.edgeId, catmullRomThroughWaypoints(waypoints))
       }
 
       return result

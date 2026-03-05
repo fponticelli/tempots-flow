@@ -2,10 +2,12 @@ import { describe, it, expect } from 'vitest'
 import {
   computeOrthogonalWaypoints,
   catmullRomThroughWaypoints,
+  computeReroutedBezier,
   findOrthogonalPath,
   detourRoute,
   buildEdgeObstacles,
   polylineHitsObstacle,
+  approximateBezierAsPolyline,
   pathHitsObstacle,
   type Point,
   type Rect,
@@ -138,10 +140,10 @@ describe('computeOrthogonalWaypoints — real pipeline demo data', () => {
     { x: 1620, y: 82.5, w: 120, h: 46 },     // error-handler?
   ]
 
-  it('FILTER→AGGREGATE (e4): real data — waypoints should not hug obstacle top edge', () => {
+  it('FILTER→AGGREGATE (e4): real data — rerouted bezier avoids obstacles smoothly', () => {
     // Real debug data:
-    // source: (649.6, 31.3) side: right
-    // target: (1090.4, 107.8) side: left
+    // source: (649.6, 31.3) side: right  → target: (1090.4, 107.8) side: left
+    // Obstacles between them at y=44.5..90.5 and y=120.5..166.5
     const source = { x: 649.6, y: 31.3, side: 'right' as const }
     const target = { x: 1090.4, y: 107.8, side: 'left' as const }
 
@@ -152,19 +154,57 @@ describe('computeOrthogonalWaypoints — real pipeline demo data', () => {
       20,
     )
 
-    const waypoints = computeOrthogonalWaypoints(source, target, obstacles, 30, 1000, 20)
-
-    // The old behavior puts a waypoint at y=24.5 (obs.y - clearance for obs at y=44.5)
-    // This hugs the obstacle top edge and creates ugly sharp corners.
-    // The waypoints should NOT be at y=24.5 (44.5 - 20)
-    const problematicY = 44.5 - 20 // = 24.5
-    const yCoords = waypoints.map((w) => w.y)
-    const hasProblematicY = yCoords.some((y) => Math.abs(y - problematicY) < 2)
-    expect(hasProblematicY).toBe(false)
-
-    // Verify the path doesn't intersect obstacles
-    const path = catmullRomThroughWaypoints(waypoints)
+    const path = computeReroutedBezier(source, target, obstacles, 30, 20)
     expect(path).toMatch(/^M /)
+    expect(path).toContain('C ')
+
+    // Two-segment bezier: M p0 C cp1 cp2 via C cp3 cp4 end → 7 points
+    const points = parseSvgPathPoints(path)
+    expect(points.length).toBe(7)
+
+    const p0 = points[0]! // source
+    const cp1 = points[1]!
+    const cp2 = points[2]!
+    const via = points[3]! // midpoint at routeY
+    const cp3 = points[4]!
+    const cp4 = points[5]!
+    const pEnd = points[6]! // target
+
+    // Verify curve starts at source and ends at target
+    expect(p0.x).toBeCloseTo(source.x)
+    expect(p0.y).toBeCloseTo(source.y)
+    expect(pEnd.x).toBeCloseTo(target.x)
+    expect(pEnd.y).toBeCloseTo(target.y)
+
+    // Via point and its control points should be above or below all obstacles
+    const minObsY = Math.min(...obstacles.map((o) => o.y))
+    const maxObsBottom = Math.max(...obstacles.map((o) => o.y + o.h))
+    const isAbove = via.y < minObsY && cp2.y < minObsY && cp3.y < minObsY
+    const isBelow = via.y > maxObsBottom && cp2.y > maxObsBottom && cp3.y > maxObsBottom
+    expect(isAbove || isBelow).toBe(true)
+
+    // Sample both bezier segments and verify neither hits obstacles
+    const seg1 = approximateBezierAsPolyline(p0, cp1, cp2, via, 20)
+    const seg2 = approximateBezierAsPolyline(via, cp3, cp4, pEnd, 20)
+    expect(polylineHitsObstacle(seg1, obstacles)).toBe(false)
+    expect(polylineHitsObstacle(seg2, obstacles)).toBe(false)
+  })
+
+  it('routes below when target is below obstacles', () => {
+    const source = { x: 100, y: 260, side: 'right' as const }
+    const target = { x: 500, y: 280, side: 'left' as const }
+    const obstacles: Rect[] = [{ x: 250, y: 150, w: 100, h: 80 }]
+
+    const path = computeReroutedBezier(source, target, obstacles, 30, 20)
+    const points = parseSvgPathPoints(path)
+    // Two-segment: M p0 C cp1 cp2 via C cp3 cp4 end → 7 points
+    expect(points.length).toBe(7)
+    const via = points[3]!
+
+    // Both source and target Y > obstacle bottom (230).
+    // midY = 270, closer to belowY (250) than aboveY (130)
+    // So via should route below: via.y >= obs.y + obs.h + clearance = 250
+    expect(via.y).toBeGreaterThanOrEqual(250)
   })
 })
 

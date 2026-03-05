@@ -451,6 +451,85 @@ function generalSegmentIntersectsRect(a: Point, b: Point, r: Rect, margin: numbe
 }
 
 /**
+ * Compute a rerouted bezier path that avoids obstacles while maintaining
+ * a smooth curve shape. Only considers obstacles that overlap the
+ * horizontal range between source and target (relevant obstacles).
+ * Routes a single cubic bezier with control points shifted to clear
+ * the relevant obstacles, preserving correct port exit/entry angles.
+ */
+export function computeReroutedBezier(
+  source: ComputedPortPosition,
+  target: ComputedPortPosition,
+  obstacles: readonly Rect[],
+  controlOffset: number,
+  clearance: number,
+): string {
+  const sc = sideOffset(source.side, controlOffset)
+  const tc = sideOffset(target.side, controlOffset)
+
+  // Filter to only obstacles that overlap the horizontal range of the edge.
+  // Distant obstacles shouldn't affect the route.
+  const minX = Math.min(source.x, target.x) - clearance
+  const maxX = Math.max(source.x, target.x) + clearance
+  const relevant = obstacles.filter(
+    (obs) => obs.x + obs.w > minX && obs.x < maxX,
+  )
+
+  if (relevant.length === 0) {
+    return [
+      `M ${source.x} ${source.y}`,
+      `C ${source.x + sc.dx} ${source.y + sc.dy},`,
+      `${target.x + tc.dx} ${target.y + tc.dy},`,
+      `${target.x} ${target.y}`,
+    ].join(' ')
+  }
+
+  // Compute bounding box of relevant obstacles only
+  let obsMinY = Infinity
+  let obsMaxY = -Infinity
+  for (const obs of relevant) {
+    obsMinY = Math.min(obsMinY, obs.y)
+    obsMaxY = Math.max(obsMaxY, obs.y + obs.h)
+  }
+
+  // Determine whether to route above or below.
+  const midY = (source.y + target.y) / 2
+  const aboveY = obsMinY - clearance
+  const belowY = obsMaxY + clearance
+  const routeY = Math.abs(midY - aboveY) <= Math.abs(midY - belowY) ? aboveY : belowY
+
+  // Two-segment cubic bezier through a via point at routeY.
+  // A single bezier can't avoid obstacles when source and target are on
+  // opposite sides vertically — the curve must pass through the obstacle zone.
+  // Two segments with a via point above/below all obstacles solves this.
+  const viaX = (source.x + target.x) / 2
+  const dir = source.x < target.x ? 1 : -1
+
+  // Control point distance proportional to segment span — ensures the curve
+  // stays flat near routeY long enough to clear obstacles horizontally.
+  const halfSpan = Math.abs(viaX - source.x)
+  const cpDist = Math.max(controlOffset, halfSpan * 0.4)
+
+  // Segment 1: source → via
+  const cp1x = source.x + sc.dx
+  const cp1y = source.y + sc.dy
+  const cp2x = viaX - dir * cpDist
+  const cp2y = routeY
+
+  // Segment 2: via → target
+  const cp3x = viaX + dir * cpDist
+  const cp3y = routeY
+  const cp4x = target.x + tc.dx
+  const cp4y = target.y + tc.dy
+
+  return [
+    `M ${source.x} ${source.y}`,
+    `C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${viaX} ${routeY}`,
+    `C ${cp3x} ${cp3y}, ${cp4x} ${cp4y}, ${target.x} ${target.y}`,
+  ].join(' ')
+}
+
+/**
  * Convert waypoints to a smooth multi-segment cubic bezier SVG path
  * using Catmull-Rom to cubic bezier conversion.
  *

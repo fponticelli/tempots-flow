@@ -8,8 +8,7 @@ import type {
 import type { ComputedPortPosition, PortSide } from '../types/layout'
 import {
   buildEdgeObstacles,
-  catmullRomThroughWaypoints,
-  computeOrthogonalWaypoints,
+  computeReroutedBezier,
   polylineHitsObstacle,
 } from './obstacle-routing'
 
@@ -174,7 +173,6 @@ function computeBundledPaths(
 }
 
 const DEFAULT_NODE_PADDING = 20
-const DEFAULT_MAX_ITERATIONS = 1000
 
 /**
  * Quick approximation of an SVG path as a polyline for collision testing.
@@ -286,19 +284,11 @@ export function createBundledStrategy(options: BundlingOptions = {}): EdgeRoutin
           const pathPolyline = approximatePathAsPolyline(path)
           if (!polylineHitsObstacle(pathPolyline, obstacles)) continue
 
-          // Collision detected: reroute via orthogonal waypoints + smooth curve
-          // Use the bundled strategy's exit distance so the rerouted path
-          // starts at a distance consistent with the bundle shape
-          const rerouteExitDist = Math.max(exitDist, nodePadding)
-          const waypoints = computeOrthogonalWaypoints(
-            edge.source,
-            edge.target,
-            obstacles,
-            rerouteExitDist,
-            DEFAULT_MAX_ITERATIONS,
-            nodePadding,
+          // Collision detected: reroute via smooth bezier that avoids obstacles
+          result.set(
+            edge.edgeId,
+            computeReroutedBezier(edge.source, edge.target, obstacles, exitDist, nodePadding),
           )
-          result.set(edge.edgeId, catmullRomThroughWaypoints(waypoints))
         }
       }
 
