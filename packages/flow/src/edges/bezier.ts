@@ -105,7 +105,47 @@ export function createBezierStrategy(
           nodePadding,
         )
 
-        if (obstacles.length === 0) {
+        const allObs = params.obstacles ?? []
+        const sourceObs = allObs.find((o) => o.nodeId === edge.sourceNodeId)
+        const targetObs = allObs.find((o) => o.nodeId === edge.targetNodeId)
+
+        const collisionObstacles = [...obstacles]
+        if (sourceObs) {
+          collisionObstacles.push({
+            x: sourceObs.position.x + 1,
+            y: sourceObs.position.y + 1,
+            w: sourceObs.dimensions.width - 2,
+            h: sourceObs.dimensions.height - 2,
+          })
+        }
+        if (targetObs) {
+          collisionObstacles.push({
+            x: targetObs.position.x + 1,
+            y: targetObs.position.y + 1,
+            w: targetObs.dimensions.width - 2,
+            h: targetObs.dimensions.height - 2,
+          })
+        }
+
+        const routingObstacles = [...obstacles]
+        if (sourceObs) {
+          routingObstacles.push({
+            x: sourceObs.position.x - nodePadding,
+            y: sourceObs.position.y - nodePadding,
+            w: sourceObs.dimensions.width + nodePadding * 2,
+            h: sourceObs.dimensions.height + nodePadding * 2,
+          })
+        }
+        if (targetObs) {
+          routingObstacles.push({
+            x: targetObs.position.x - nodePadding,
+            y: targetObs.position.y - nodePadding,
+            w: targetObs.dimensions.width + nodePadding * 2,
+            h: targetObs.dimensions.height + nodePadding * 2,
+          })
+        }
+
+        if (collisionObstacles.length === 0) {
           result.set(edge.edgeId, path)
           continue
         }
@@ -125,13 +165,16 @@ export function createBezierStrategy(
 
         const polyline = approximateBezierAsPolyline(p0, p1, p2, p3)
 
-        if (!polylineHitsObstacle(polyline, obstacles, 0)) {
+        if (!polylineHitsObstacle(polyline, collisionObstacles, 0)) {
           result.set(edge.edgeId, path)
           continue
         }
 
         // Collision detected: reroute via smooth bezier that avoids obstacles
-        result.set(edge.edgeId, computeReroutedBezier(source, target, obstacles, controlOffset, 0))
+        result.set(
+          edge.edgeId,
+          computeReroutedBezier(source, target, routingObstacles, controlOffset, 0),
+        )
       }
 
       return result

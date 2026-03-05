@@ -515,8 +515,8 @@ export function computeReroutedBezier(
     }
 
     const midX = (source.x + target.x) / 2
-    const leftX = obsMinX - clearance
-    const rightX = obsMaxX + clearance
+    const leftX = obsMinX
+    const rightX = obsMaxX
     const routeX = Math.abs(midX - leftX) <= Math.abs(midX - rightX) ? leftX : rightX
 
     const viaY = (source.y + target.y) / 2
@@ -527,12 +527,20 @@ export function computeReroutedBezier(
     const cp1x = source.x + sc.dx
     const cp1y = source.y + sc.dy
     const cp2x = routeX
-    const cp2y = viaY - dir * cpDist
+    let cp2y = viaY - dir * cpDist
 
     const cp3x = routeX
-    const cp3y = viaY + dir * cpDist
+    let cp3y = viaY + dir * cpDist
     const cp4x = target.x + tc.dx
     const cp4y = target.y + tc.dy
+
+    if (dir === 1) {
+      cp2y = Math.max(source.y, cp2y)
+      cp3y = Math.min(target.y, cp3y)
+    } else {
+      cp2y = Math.min(source.y, cp2y)
+      cp3y = Math.max(target.y, cp3y)
+    }
 
     return [
       `M ${source.x} ${source.y}`,
@@ -559,13 +567,21 @@ export function computeReroutedBezier(
 
     const cp1x = source.x + sc.dx
     const cp1y = source.y + sc.dy
-    const cp2x = viaX - dir * cpDist
+    let cp2x = viaX - dir * cpDist
     const cp2y = routeY
 
-    const cp3x = viaX + dir * cpDist
+    let cp3x = viaX + dir * cpDist
     const cp3y = routeY
     const cp4x = target.x + tc.dx
     const cp4y = target.y + tc.dy
+
+    if (dir === 1) {
+      cp2x = Math.max(source.x, cp2x)
+      cp3x = Math.min(target.x, cp3x)
+    } else {
+      cp2x = Math.min(source.x, cp2x)
+      cp3x = Math.max(target.x, cp3x)
+    }
 
     return [
       `M ${source.x} ${source.y}`,
