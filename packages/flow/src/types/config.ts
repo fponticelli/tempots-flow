@@ -10,6 +10,7 @@ import type {
   ComputedPortPosition,
   ComputedEdgePath,
   PortPlacement,
+  PortOffset,
 } from './layout'
 import type { Diagnostic } from './validation'
 import type { Validator } from '../validators/index'
@@ -332,6 +333,9 @@ export interface FlowInstance<N, E> {
   // Viewport culling
   readonly visibleNodeIds: Signal<ReadonlySet<string>>
   readonly visibleEdgeIds: Signal<ReadonlySet<string>>
+
+  // Measured port offsets (DOM-driven)
+  readonly portOffsets: Signal<ReadonlyMap<string, ReadonlyMap<string, PortOffset>>>
 
   // Per-node signals
   getNodePosition(nodeId: string): Signal<Position>

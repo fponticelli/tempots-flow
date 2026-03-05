@@ -136,18 +136,35 @@ export function NodeWrapper<N, E>(
     WithElement((el: HTMLElement) => {
       function measurePortDots() {
         const offsets = new Map<string, PortOffset>()
+        // Use .flow-node as measurement reference when available.  The inner
+        // .flow-node element may have a CSS enter animation (e.g. scale(0.8) →
+        // scale(1)) that affects getBoundingClientRect() for all descendants
+        // (including port dots) but NOT for the wrapper element.  By measuring
+        // both dots and reference in the same transform context the animation
+        // scale cancels out, yielding correct flow-space offsets.
+        const refEl = el.querySelector<HTMLElement>('.flow-node') ?? el
         const dots = el.querySelectorAll<HTMLElement>('.flow-port-dot')
+        const nodeW = el.offsetWidth
+        const nodeH = el.offsetHeight
         for (const dot of dots) {
           const portEl = dot.closest<HTMLElement>('.flow-port')
           if (!portEl) continue
           const portId = portEl.dataset.portid
           if (!portId) continue
           const dotRect = dot.getBoundingClientRect()
-          const nodeRect = el.getBoundingClientRect()
-          const nodeW = el.offsetWidth
-          const nodeH = el.offsetHeight
-          const offsetX = dotRect.left + dotRect.width / 2 - nodeRect.left
-          const offsetY = dotRect.top + dotRect.height / 2 - nodeRect.top
+          const refRect = refEl.getBoundingClientRect()
+          const refW = refEl.offsetWidth
+          // getBoundingClientRect returns screen-scaled values (affected by
+          // viewport zoom transforms and CSS animations), while offsetWidth is
+          // unscaled.  Derive the current scale so we can normalize to flow-space.
+          const scale = refW > 0 ? refRect.width / refW : 1
+          let offsetX = (dotRect.left + dotRect.width / 2 - refRect.left) / scale
+          let offsetY = (dotRect.top + dotRect.height / 2 - refRect.top) / scale
+          // Adjust if the reference element is offset from the wrapper
+          if (refEl !== el) {
+            offsetX += refEl.offsetLeft
+            offsetY += refEl.offsetTop
+          }
           // Determine side from the port direction attribute and the dot's
           // position relative to the node center.  Using the declared direction
           // (input vs output) narrows the candidates to two sides, then we pick

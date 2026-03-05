@@ -679,6 +679,7 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     edgePaths,
     visibleNodeIds,
     visibleEdgeIds,
+    portOffsets: portOffsetsProp,
 
     getNodePosition(nodeId: string): Signal<Position> {
       let sig = nodePositionCache.get(nodeId)

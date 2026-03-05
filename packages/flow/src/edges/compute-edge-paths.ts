@@ -55,6 +55,21 @@ export function createEdgePathsSignal<N, E>(
               side: offset.side,
             })
           }
+          // DEBUG: log computed edge endpoints for diagnosis
+          if (typeof window !== 'undefined' && (window as unknown as Record<string, unknown>).__FLOW_DEBUG_PORTS__) {
+            console.log(
+              `[edge-ports] node=${nodeId} pos=(${pos.x.toFixed(1)},${pos.y.toFixed(1)}) dims=(${dims.width}×${dims.height})`,
+            )
+            for (const [portId, pp] of result) {
+              const fb = fallbackPositions.get(portId)
+              const off = offsets.get(portId)
+              console.log(
+                `  port=${portId} measured=(${pp.x.toFixed(1)},${pp.y.toFixed(1)},${pp.side})`,
+                off ? `offset=(${off.offsetX.toFixed(1)},${off.offsetY.toFixed(1)})` : 'NO_OFFSET',
+                fb ? `fallback=(${fb.x.toFixed(1)},${fb.y.toFixed(1)},${fb.side})` : 'NO_FALLBACK',
+              )
+            }
+          }
           cached = result
         } else {
           // Fallback to formula-based positions

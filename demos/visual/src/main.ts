@@ -958,6 +958,9 @@ const flow = createFlow<VisualNodeData, VisualEdgeData>({
   },
 })
 
+// Expose flow for e2e testing
+;(window as unknown as Record<string, unknown>).__FLOW__ = flow
+
 // --- Toolbar UI ---
 
 function ToolbarButton(label: TNode, isActive: Signal<boolean>, onClick: () => void): TNode {
