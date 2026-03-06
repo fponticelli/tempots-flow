@@ -140,9 +140,7 @@ function orthogonalBezier(
   return {
     path: [
       `M ${source.x} ${source.y}`,
-      `L ${ex} ${ey}`,
-      `C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${nx} ${ny}`,
-      `L ${target.x} ${target.y}`,
+      `C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${target.x} ${target.y}`,
     ].join(' '),
     polyline,
   }
@@ -197,33 +195,34 @@ function computeBundledPaths(
     const natCp2x = nx + cp2Off.dx
     const natCp2y = ny + cp2Off.dy
 
-    // Shared control point: interpolate natural toward centroid, then fan
-    const cp1x = natCp1x + (centroidX - natCp1x) * strength + fan.perpX * fanOffset
-    const cp1y = natCp1y + (centroidY - natCp1y) * strength + fan.perpY * fanOffset
-    const cp2x = natCp2x + (centroidX - natCp2x) * strength + fan.perpX * fanOffset
-    const cp2y = natCp2y + (centroidY - natCp2y) * strength + fan.perpY * fanOffset
+    // Apply fan offset perpendicular to the main axis.
+    // Keep control points aligned with port exit direction so L→C transition
+    // is smooth (tangent-continuous). Centroid pull is only applied along the
+    // perpendicular axis to preserve the exit/entry tangent direction.
+    const perpPull = fanOffset + ((centroidX - natCp1x) * fan.perpX + (centroidY - natCp1y) * fan.perpY) * strength
+    const cp1x = natCp1x + fan.perpX * perpPull
+    const cp1y = natCp1y + fan.perpY * perpPull
+    const perpPull2 = fanOffset + ((centroidX - natCp2x) * fan.perpX + (centroidY - natCp2y) * fan.perpY) * strength
+    const cp2x = natCp2x + fan.perpX * perpPull2
+    const cp2y = natCp2y + fan.perpY * perpPull2
 
-    const rawPolyline = [
+    const path = [
+      `M ${edge.source.x} ${edge.source.y}`,
+      `C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${edge.target.x} ${edge.target.y}`,
+    ].join(' ')
+
+    const polyline = [
       { x: edge.source.x, y: edge.source.y },
-      { x: ex, y: ey },
       ...approximateBezierAsPolyline(
-        { x: ex, y: ey },
+        { x: edge.source.x, y: edge.source.y },
         { x: cp1x, y: cp1y },
         { x: cp2x, y: cp2y },
-        { x: nx, y: ny },
+        { x: edge.target.x, y: edge.target.y },
       ),
-      { x: nx, y: ny },
       { x: edge.target.x, y: edge.target.y },
     ]
 
-    const smoothPath = catmullRomThroughWaypoints(rawPolyline, 0.35)
-    const sampleCount = Math.min(64, Math.max(20, Math.ceil(rawPolyline.length * 2)))
-    const smoothPolyline = approximatePathAsPolyline(smoothPath, sampleCount)
-
-    result.set(edge.edgeId, {
-      path: smoothPath,
-      polyline: smoothPolyline,
-    })
+    result.set(edge.edgeId, { path, polyline })
   }
 
   return result

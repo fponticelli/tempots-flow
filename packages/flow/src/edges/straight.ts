@@ -65,7 +65,7 @@ export function createStraightStrategy(options?: StraightOptions): EdgeRoutingSt
           routingObstacles,
           nodePadding,
           DEFAULT_MAX_ITERATIONS,
-          0,
+          nodePadding,
         )
         result.set(edge.edgeId, waypointsToPath(waypoints, 0))
       }

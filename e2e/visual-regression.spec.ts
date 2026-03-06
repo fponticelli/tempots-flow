@@ -51,6 +51,14 @@ const scenarioIds = [
   'obstacle--step',
   'obstacle--smooth-step',
   'obstacle--orthogonal',
+  'obstacle--bundled',
+  'obstacle--bezier-rl',
+  'obstacle--bezier-tb',
+  'obstacle--bezier-bt',
+  'obstacle--bezier-vertical-lr',
+  'obstacle--bezier-vertical-rl',
+  'obstacle--bezier-vertical-tb',
+  'obstacle--bezier-vertical-bt',
 ]
 
 interface TestResult {

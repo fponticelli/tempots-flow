@@ -194,7 +194,7 @@ export function createStepStrategy(options?: StepOptions): EdgeRoutingStrategy {
           routingObstacles,
           nodePadding,
           DEFAULT_MAX_ITERATIONS,
-          0,
+          nodePadding,
         )
         result.set(edge.edgeId, waypointsToPath(waypoints, 0))
       }

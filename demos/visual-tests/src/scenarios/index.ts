@@ -40,6 +40,14 @@ import { straightObstacleScenario } from './obstacles/straight-obstacle'
 import { stepObstacleScenario } from './obstacles/step-obstacle'
 import { smoothStepObstacleScenario } from './obstacles/smooth-step-obstacle'
 import { orthogonalObstacleScenario } from './obstacles/orthogonal-obstacle'
+import { bundledObstacleScenario } from './obstacles/bundled-obstacle'
+import { bezierObstacleRLScenario } from './obstacles/bezier-obstacle-rl'
+import { bezierObstacleTBScenario } from './obstacles/bezier-obstacle-tb'
+import { bezierObstacleBTScenario } from './obstacles/bezier-obstacle-bt'
+import { bezierObstacleVerticalLRScenario } from './obstacles/bezier-obstacle-vertical-lr'
+import { bezierObstacleVerticalRLScenario } from './obstacles/bezier-obstacle-vertical-rl'
+import { bezierObstacleVerticalTBScenario } from './obstacles/bezier-obstacle-vertical-tb'
+import { bezierObstacleVerticalBTScenario } from './obstacles/bezier-obstacle-vertical-bt'
 
 export const allScenarios: readonly TestScenario[] = [
   // Single node
@@ -82,6 +90,14 @@ export const allScenarios: readonly TestScenario[] = [
   stepObstacleScenario,
   smoothStepObstacleScenario,
   orthogonalObstacleScenario,
+  bundledObstacleScenario,
+  bezierObstacleRLScenario,
+  bezierObstacleTBScenario,
+  bezierObstacleBTScenario,
+  bezierObstacleVerticalLRScenario,
+  bezierObstacleVerticalRLScenario,
+  bezierObstacleVerticalTBScenario,
+  bezierObstacleVerticalBTScenario,
 ]
 
 export const scenariosByCategory = new Map(

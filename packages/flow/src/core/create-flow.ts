@@ -303,6 +303,8 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
 
   // --- Dimension change handler ---
   function onDimensionsChange(nodeId: string, dims: Dimensions) {
+    // Ignore zero dimensions — the DOM element hasn't been laid out yet
+    if (dims.width === 0 || dims.height === 0) return
     layoutEngine.updateDimensions(nodeId, dims)
   }
 

@@ -22,8 +22,8 @@ export const straightEdgeScenario: TestScenario = {
     grid: false,
     fitViewOnInit: true,
     initialPositions: new Map([
-      ['a', { x: 50, y: 150 }],
-      ['b', { x: 450, y: 150 }],
+      ['a', { x: 50, y: 100 }],
+      ['b', { x: 450, y: 250 }],
     ]),
   },
 }

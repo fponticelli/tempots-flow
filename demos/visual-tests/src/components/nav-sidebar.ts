@@ -4,6 +4,7 @@ import { scenariosByCategory } from '../scenarios'
 import {
   searchQuery,
   statusFilter,
+  categoryFilter,
   navigateTo,
   filteredScenarios,
 } from '../state'
@@ -48,7 +49,10 @@ export function NavSidebar(): TNode {
       style.fontWeight('700'),
       style.color('#e0e0e0'),
       style.cursor('pointer'),
-      on.click(() => navigateTo('gallery')),
+      on.click(() => {
+        categoryFilter.set(null)
+        navigateTo('gallery')
+      }),
       'Visual Tests',
     ),
 
@@ -92,16 +96,34 @@ export function NavSidebar(): TNode {
       style.flexDirection('column'),
       style.gap('4px'),
 
-      ...Array.from(scenariosByCategory.entries()).map(([category, scenarios]) =>
-        html.div(
+      // "All" category entry
+      html.div(
+        style.padding('6px 8px'),
+        style.borderRadius('4px'),
+        style.cursor('pointer'),
+        style.fontSize('13px'),
+        style.color(categoryFilter.map((c): string => c === null ? '#e0e0e0' : '#aaa')),
+        style.background(categoryFilter.map((c): string => c === null ? '#ffffff10' : 'transparent')),
+        style.fontWeight(categoryFilter.map((c): string => c === null ? '600' : '400')),
+        on.click(() => categoryFilter.set(null)),
+        'All',
+      ),
+
+      ...Array.from(scenariosByCategory.entries()).map(([category, scenarios]) => {
+        const isActive = categoryFilter.map((c) => c === category)
+
+        return html.div(
           style.padding('6px 8px'),
           style.borderRadius('4px'),
           style.cursor('pointer'),
           style.fontSize('13px'),
-          style.color('#aaa'),
+          style.color(isActive.map((a): string => a ? '#e0e0e0' : '#aaa')),
+          style.background(isActive.map((a): string => a ? '#ffffff10' : 'transparent')),
+          style.fontWeight(isActive.map((a): string => a ? '600' : '400')),
           style.display('flex'),
           style.justifyContent('space-between'),
           style.alignItems('center'),
+          on.click(() => categoryFilter.set(category)),
 
           html.span(category),
           html.span(
@@ -109,8 +131,8 @@ export function NavSidebar(): TNode {
             style.color('#666'),
             `${scenarios.length}`,
           ),
-        ),
-      ),
+        )
+      }),
     ),
   )
 }

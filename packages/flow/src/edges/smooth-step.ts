@@ -110,7 +110,7 @@ export function createSmoothStepStrategy(options?: SmoothStepOptions): EdgeRouti
           routingObstacles,
           nodePadding,
           DEFAULT_MAX_ITERATIONS,
-          0,
+          nodePadding,
         )
         result.set(edge.edgeId, waypointsToPath(waypoints, radius))
       }

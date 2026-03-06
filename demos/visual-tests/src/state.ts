@@ -10,6 +10,7 @@ export const viewMode = prop<ViewMode>('gallery')
 export const selectedScenarioId = prop<string | null>(null)
 export const searchQuery = prop('')
 export const statusFilter = prop<TestStatus | 'all'>('all')
+export const categoryFilter = prop<string | null>(null)
 export const testResults = prop<TestResult[]>([])
 
 export const resultsByScenarioId: Signal<Map<string, TestResult>> = computed(
@@ -24,9 +25,11 @@ export const filteredScenarios: Signal<TestScenario[]> = computed(
   () => {
     const query = searchQuery.value.toLowerCase()
     const filter = statusFilter.value
+    const category = categoryFilter.value
     const resultsMap = resultsByScenarioId.value
 
     return allScenarios.filter((s) => {
+      if (category && s.category !== category) return false
       if (query && !s.name.toLowerCase().includes(query) && !s.id.toLowerCase().includes(query)) {
         return false
       }
@@ -38,7 +41,7 @@ export const filteredScenarios: Signal<TestScenario[]> = computed(
       return true
     })
   },
-  [searchQuery, statusFilter, resultsByScenarioId],
+  [searchQuery, statusFilter, categoryFilter, resultsByScenarioId],
 )
 
 export const categoryCounts: Signal<

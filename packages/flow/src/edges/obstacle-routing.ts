@@ -614,9 +614,23 @@ export function computeReroutedBezier(
     () => buildXDetour(rightBumpX),
   ]
 
-  // Horizontal ports prefer Y-detour, vertical prefer X-detour
-  const primary =
-    sourceH && targetH ? yCandidates : !sourceH && !targetH ? xCandidates : yCandidates
+  // Choose detour axis based on both port orientation AND node arrangement.
+  // When nodes are primarily separated along the same axis as the port exit
+  // direction, the detour must go perpendicular to the travel direction.
+  const sepDx = Math.abs(target.x - source.x)
+  const sepDy = Math.abs(target.y - source.y)
+  const nodesVertical = sepDy > sepDx * 1.5
+
+  let primary: Builder[]
+  if (sourceH && targetH) {
+    // Horizontal ports: Y-detour if horizontal arrangement, X-detour if vertical
+    primary = nodesVertical ? xCandidates : yCandidates
+  } else if (!sourceH && !targetH) {
+    // Vertical ports: X-detour if vertical arrangement, Y-detour if horizontal
+    primary = sepDx > sepDy * 1.5 ? yCandidates : xCandidates
+  } else {
+    primary = yCandidates
+  }
   const fallback = primary === yCandidates ? xCandidates : yCandidates
 
   let bestPath: string | null = null

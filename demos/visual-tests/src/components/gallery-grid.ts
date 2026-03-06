@@ -70,8 +70,8 @@ function ScenarioCard(scenario: {
       (_id) =>
         html.img(
           style.width('100%'),
-          style.height('120px'),
-          style.objectFit('cover'),
+          style.maxHeight('200px'),
+          style.objectFit('contain'),
           style.borderRadius('4px'),
           style.border('1px solid #222'),
           attr.src(_id.map((v) => `/screenshots/baselines/${v}.png`)),
