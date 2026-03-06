@@ -5,3 +5,8 @@ dist/
 coverage/
 .DS_Store
 *.local
+
+# Visual regression test artifacts
+e2e/current/
+e2e/diffs/
+e2e/visual-regression-results.json

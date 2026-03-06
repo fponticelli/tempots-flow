@@ -10,6 +10,8 @@
     "dev:basic": "pnpm --filter basic-demo run dev",
     "dev:pipeline": "pnpm --filter pipeline-demo run dev",
     "dev:visual": "pnpm --filter visual-demo run dev",
+    "dev:visual-tests": "pnpm --filter visual-tests-demo run dev",
+    "visual:test": "npx playwright test --project=visual-regression",
     "test": "pnpm --filter @tempots/flow run test",
     "test:watch": "pnpm --filter @tempots/flow run test:watch",
     "lint": "pnpm -r run lint",
@@ -23,6 +25,8 @@
     "@eslint/js": "^9.22.0",
     "@playwright/test": "^1.58.2",
     "eslint": "^9.22.0",
+    "pixelmatch": "^7.1.0",
+    "pngjs": "^7.0.0",
     "prettier": "^3.5.3",
     "typescript": "^5.8.2",
     "typescript-eslint": "^8.26.0"

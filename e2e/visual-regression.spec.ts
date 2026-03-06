@@ -1,0 +1,153 @@
+import { test, expect } from '@playwright/test'
+import fs from 'node:fs'
+import path from 'node:path'
+
+const THRESHOLD = 0.1
+const MAX_DIFF_PERCENT = 0.5
+
+const BASELINES_DIR = path.resolve('e2e/baselines')
+const CURRENT_DIR = path.resolve('e2e/current')
+const DIFFS_DIR = path.resolve('e2e/diffs')
+const RESULTS_PATH = path.resolve('e2e/visual-regression-results.json')
+
+const scenarioIds = [
+  // Single node
+  'single-node--horizontal-ports',
+  'single-node--vertical-ports',
+  'single-node--many-ports',
+
+  // Single edge
+  'single-edge--bezier',
+  'single-edge--straight',
+  'single-edge--step',
+  'single-edge--smooth-step',
+  'single-edge--orthogonal',
+  'single-edge--bundled',
+
+  // Multi-node
+  'multi-node--chain',
+  'multi-node--diamond',
+
+  // Port placements
+  'port-placement--all-sides',
+  'port-placement--mixed',
+
+  // States
+  'state--selected-node',
+  'state--selected-edge',
+
+  // Markers
+  'marker--arrows',
+
+  // Layouts
+  'layout--hierarchical-lr',
+  'layout--hierarchical-tb',
+  'layout--grid',
+  'layout--tree',
+
+  // Obstacles
+  'obstacle--bezier',
+  'obstacle--straight',
+  'obstacle--step',
+  'obstacle--smooth-step',
+  'obstacle--orthogonal',
+]
+
+interface TestResult {
+  scenarioId: string
+  status: 'pass' | 'fail' | 'new'
+  diffPixelCount: number
+  diffPercentage: number
+}
+
+const results: TestResult[] = []
+
+async function diffAgainstBaseline(
+  scenarioId: string,
+  currentPath: string,
+  threshold: number,
+): Promise<TestResult> {
+  const baselinePath = path.join(BASELINES_DIR, `${scenarioId}.png`)
+
+  if (!fs.existsSync(baselinePath)) {
+    return {
+      scenarioId,
+      status: 'new',
+      diffPixelCount: 0,
+      diffPercentage: 0,
+    }
+  }
+
+  const { PNG } = await import('pngjs')
+  const pixelmatch = (await import('pixelmatch')).default
+
+  const baseline = PNG.sync.read(fs.readFileSync(baselinePath))
+  const current = PNG.sync.read(fs.readFileSync(currentPath))
+
+  const width = Math.max(baseline.width, current.width)
+  const height = Math.max(baseline.height, current.height)
+
+  const diff = new PNG({ width, height })
+
+  const diffPixels = pixelmatch(
+    baseline.data,
+    current.data,
+    diff.data,
+    width,
+    height,
+    { threshold },
+  )
+
+  const totalPixels = width * height
+  const diffPercentage = (diffPixels / totalPixels) * 100
+  const diffPath = path.join(DIFFS_DIR, `${scenarioId}.png`)
+
+  fs.mkdirSync(DIFFS_DIR, { recursive: true })
+  fs.writeFileSync(diffPath, PNG.sync.write(diff))
+
+  return {
+    scenarioId,
+    status: diffPixels === 0 ? 'pass' : 'fail',
+    diffPixelCount: diffPixels,
+    diffPercentage,
+  }
+}
+
+test.describe('visual regression', () => {
+  for (const scenarioId of scenarioIds) {
+    test(scenarioId, async ({ page }) => {
+      await page.goto(`/?mode=capture&scenario=${scenarioId}`)
+
+      // Wait for the scenario container to render
+      await page.waitForSelector(`[data-scenario-id="${scenarioId}"]`, {
+        timeout: 10000,
+      })
+
+      // Wait for layout transitions and port measurements to settle
+      await page.waitForTimeout(1000)
+
+      const container = page.locator(`[data-scenario-id="${scenarioId}"]`)
+
+      fs.mkdirSync(CURRENT_DIR, { recursive: true })
+      const currentPath = path.join(CURRENT_DIR, `${scenarioId}.png`)
+      await container.screenshot({ path: currentPath })
+
+      const result = await diffAgainstBaseline(scenarioId, currentPath, THRESHOLD)
+      results.push(result)
+
+      if (result.status === 'new') {
+        console.log(`NEW: ${scenarioId} — no baseline, screenshot saved`)
+        return
+      }
+
+      expect(
+        result.diffPercentage,
+        `${scenarioId}: ${result.diffPercentage.toFixed(2)}% pixels differ`,
+      ).toBeLessThan(MAX_DIFF_PERCENT)
+    })
+  }
+
+  test.afterAll(() => {
+    fs.writeFileSync(RESULTS_PATH, JSON.stringify(results, null, 2))
+  })
+})

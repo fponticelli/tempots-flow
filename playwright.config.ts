@@ -5,18 +5,37 @@ export default defineConfig({
   timeout: 30000,
   use: {
     headless: true,
-    baseURL: 'http://localhost:3003',
   },
-  webServer: {
-    command: 'pnpm -C demos/visual dev',
-    port: 3003,
-    reuseExistingServer: true,
-    timeout: 15000,
-  },
+  webServer: [
+    {
+      command: 'pnpm -C demos/visual dev',
+      port: 3003,
+      reuseExistingServer: true,
+      timeout: 15000,
+    },
+    {
+      command: 'pnpm -C demos/visual-tests dev',
+      port: 3010,
+      reuseExistingServer: true,
+      timeout: 15000,
+    },
+  ],
   projects: [
     {
       name: 'chromium',
-      use: { browserName: 'chromium' },
+      testMatch: 'port-edge-alignment.spec.ts',
+      use: {
+        browserName: 'chromium',
+        baseURL: 'http://localhost:3003',
+      },
+    },
+    {
+      name: 'visual-regression',
+      testMatch: 'visual-regression.spec.ts',
+      use: {
+        browserName: 'chromium',
+        baseURL: 'http://localhost:3010',
+      },
     },
   ],
 })

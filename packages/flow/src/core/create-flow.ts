@@ -670,6 +670,26 @@ export function createFlow<N, E>(config: FlowConfig<N, E>): FlowInstance<N, E> {
     diagnostics,
   })
 
+  // --- Fit view on init ---
+  if (config.fitViewOnInit) {
+    // When the container mounts, wait for dimensions to be measured, then fit
+    const unsub = containerMounted.on(() => {
+      if (containerMounted.value === 0) return
+      // Wait two frames for node dimensions to be measured by the DOM
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const padding = config.fitViewPadding ?? 50
+          const target = computeFitViewport(padding)
+          if (target) {
+            // Set viewport directly (no animation) for initial fit
+            viewportProp.set(target)
+          }
+          unsub()
+        })
+      })
+    })
+  }
+
   // --- Instance API ---
   return {
     graph: graphProp,
