@@ -23,9 +23,9 @@ export const bezierObstacleScenario: TestScenario = {
     grid: false,
     fitViewOnInit: true,
     initialPositions: new Map([
-      ['a', { x: 50, y: 150 }],
-      ['b', { x: 550, y: 150 }],
-      ['obstacle', { x: 250, y: 100 }],
+      ['a', { x: 50, y: 200 }],
+      ['b', { x: 600, y: 200 }],
+      ['obstacle', { x: 310, y: 190 }],
     ]),
   },
 }
