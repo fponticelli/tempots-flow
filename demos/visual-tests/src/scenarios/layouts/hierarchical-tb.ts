@@ -7,8 +7,7 @@ export const hierarchicalTBScenario: TestScenario = {
   id: 'layout--hierarchical-tb',
   name: 'Hierarchical TB',
   category: 'layouts',
-  description:
-    'Five nodes in a tree with hierarchical top-to-bottom layout',
+  description: 'Five nodes in a tree with hierarchical top-to-bottom layout',
   graph: makeGraph(
     [
       makeNode('root', 'Root', [], ['out1', 'out2']),

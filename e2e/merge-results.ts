@@ -9,9 +9,7 @@ export default function globalTeardown() {
   const files = fs.readdirSync(RESULTS_DIR).filter((f) => f.endsWith('.json'))
   if (files.length === 0) return
 
-  const merged = files.map((f) =>
-    JSON.parse(fs.readFileSync(path.join(RESULTS_DIR, f), 'utf-8')),
-  )
+  const merged = files.map((f) => JSON.parse(fs.readFileSync(path.join(RESULTS_DIR, f), 'utf-8')))
   fs.writeFileSync(RESULTS_PATH, JSON.stringify(merged, null, 2))
   fs.rmSync(RESULTS_DIR, { recursive: true, force: true })
 }

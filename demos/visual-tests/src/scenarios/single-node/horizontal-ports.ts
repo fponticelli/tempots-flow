@@ -7,10 +7,7 @@ export const horizontalPortsScenario: TestScenario = {
   name: 'Horizontal Ports',
   category: 'single-node',
   description: 'Single node with input ports on the left and output ports on the right',
-  graph: makeGraph(
-    [makeNode('n1', 'Node A', ['in1', 'in2'], ['out1', 'out2'])],
-    [],
-  ),
+  graph: makeGraph([makeNode('n1', 'Node A', ['in1', 'in2'], ['out1', 'out2'])], []),
   config: {
     layout: manualLayout,
     portPlacement: 'horizontal',

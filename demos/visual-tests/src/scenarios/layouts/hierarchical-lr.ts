@@ -7,8 +7,7 @@ export const hierarchicalLRScenario: TestScenario = {
   id: 'layout--hierarchical-lr',
   name: 'Hierarchical LR',
   category: 'layouts',
-  description:
-    'Five nodes in a tree with hierarchical left-to-right layout',
+  description: 'Five nodes in a tree with hierarchical left-to-right layout',
   graph: makeGraph(
     [
       makeNode('root', 'Root', [], ['out1', 'out2']),

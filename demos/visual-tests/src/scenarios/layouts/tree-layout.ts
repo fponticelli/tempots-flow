@@ -7,8 +7,7 @@ export const treeLayoutScenario: TestScenario = {
   id: 'layout--tree',
   name: 'Tree Layout',
   category: 'layouts',
-  description:
-    'Five nodes in a tree with dedicated tree layout algorithm (LR)',
+  description: 'Five nodes in a tree with dedicated tree layout algorithm (LR)',
   graph: makeGraph(
     [
       makeNode('root', 'Root', [], ['out1', 'out2']),

@@ -9,10 +9,7 @@ export const longDistanceScenario: TestScenario = {
   category: 'edge-paths',
   description: 'Two nodes far apart (800px) to test long edge paths',
   graph: makeGraph(
-    [
-      makeNode('a', 'Source', [], ['out']),
-      makeNode('b', 'Target', ['in'], []),
-    ],
+    [makeNode('a', 'Source', [], ['out']), makeNode('b', 'Target', ['in'], [])],
     [makeEdge('e1', 'a', 'out', 'b', 'in')],
   ),
   config: {

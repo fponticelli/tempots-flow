@@ -9,10 +9,7 @@ export const straightEdgeScenario: TestScenario = {
   category: 'single-edge',
   description: 'Two nodes connected with a straight edge',
   graph: makeGraph(
-    [
-      makeNode('a', 'Source', [], ['out']),
-      makeNode('b', 'Target', ['in'], []),
-    ],
+    [makeNode('a', 'Source', [], ['out']), makeNode('b', 'Target', ['in'], [])],
     [makeEdge('e1', 'a', 'out', 'b', 'in')],
   ),
   config: {

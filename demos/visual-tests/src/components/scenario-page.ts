@@ -6,13 +6,10 @@ import { selectedScenarioId, navigateTo } from '../state'
 import { ScenarioViewer } from './scenario-viewer'
 
 export function ScenarioPage(): TNode {
-  const currentIndex = computed(
-    () => {
-      const id = selectedScenarioId.value
-      return id ? allScenarios.findIndex((s) => s.id === id) : -1
-    },
-    [selectedScenarioId],
-  )
+  const currentIndex = computed(() => {
+    const id = selectedScenarioId.value
+    return id ? allScenarios.findIndex((s) => s.id === id) : -1
+  }, [selectedScenarioId])
 
   const name = selectedScenarioId.map(
     (id): string => (id ? scenarioById.get(id)?.name : null) ?? '',
@@ -54,23 +51,16 @@ export function ScenarioPage(): TNode {
         'Back',
       ),
 
-      html.span(
-        style.fontSize('18px'),
-        style.fontWeight('600'),
-        style.color('#e0e0e0'),
-        name,
-      ),
+      html.span(style.fontSize('18px'), style.fontWeight('600'), style.color('#e0e0e0'), name),
 
-      Ensure(
-        selectedScenarioId,
-        (id) =>
-          html.a(
-            style.color('#f59e0b'),
-            style.cursor('pointer'),
-            style.fontSize('13px'),
-            on.click(() => navigateTo('diff', id.value)),
-            'View Diff',
-          ),
+      Ensure(selectedScenarioId, (id) =>
+        html.a(
+          style.color('#f59e0b'),
+          style.cursor('pointer'),
+          style.fontSize('13px'),
+          on.click(() => navigateTo('diff', id.value)),
+          'View Diff',
+        ),
       ),
 
       // Spacer

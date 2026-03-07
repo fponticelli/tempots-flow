@@ -4,11 +4,7 @@ import { computed } from '@tempots/core'
 import type { Signal } from '@tempots/core'
 import type { TestResult } from '../types'
 import type { TestScenario } from '../types'
-import {
-  filteredScenarios,
-  resultsByScenarioId,
-  navigateTo,
-} from '../state'
+import { filteredScenarios, resultsByScenarioId, navigateTo } from '../state'
 
 function ScenarioCard(scenario: {
   readonly id: string
@@ -58,11 +54,7 @@ function ScenarioCard(scenario: {
     ),
 
     // Category label
-    html.div(
-      style.fontSize('11px'),
-      style.color('#666'),
-      scenario.category,
-    ),
+    html.div(style.fontSize('11px'), style.color('#666'), scenario.category),
 
     // Thumbnail (baseline image if available)
     Ensure(
@@ -118,9 +110,8 @@ export function GalleryGrid(): TNode {
     style.gap('16px'),
     style.padding('20px'),
 
-    ForEach(
-      filteredScenarios as Signal<TestScenario[]>,
-      (scenario) => ScenarioCard(scenario.value),
+    ForEach(filteredScenarios as Signal<TestScenario[]>, (scenario) =>
+      ScenarioCard(scenario.value),
     ),
   )
 }

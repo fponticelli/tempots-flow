@@ -7,8 +7,7 @@ export const allSidesScenario: TestScenario = {
   id: 'port-placement--all-sides',
   name: 'All Sides',
   category: 'port-placements',
-  description:
-    'Four nodes in a cross pattern with edges connecting from all sides',
+  description: 'Four nodes in a cross pattern with edges connecting from all sides',
   graph: makeGraph(
     [
       makeNode('top', 'Top', [], ['out']),
@@ -16,10 +15,7 @@ export const allSidesScenario: TestScenario = {
       makeNode('right', 'Right', ['in'], []),
       makeNode('bottom', 'Bottom', ['in'], []),
     ],
-    [
-      makeEdge('e1', 'top', 'out', 'center', 'in'),
-      makeEdge('e2', 'center', 'out', 'right', 'in'),
-    ],
+    [makeEdge('e1', 'top', 'out', 'center', 'in'), makeEdge('e2', 'center', 'out', 'right', 'in')],
   ),
   config: {
     edgeRouting: createBezierStrategy(),

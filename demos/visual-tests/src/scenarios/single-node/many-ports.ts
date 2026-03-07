@@ -8,14 +8,7 @@ export const manyPortsScenario: TestScenario = {
   category: 'single-node',
   description: 'Single node with many input and output ports',
   graph: makeGraph(
-    [
-      makeNode(
-        'n1',
-        'Multi-Port',
-        ['in1', 'in2', 'in3', 'in4', 'in5'],
-        ['out1', 'out2', 'out3'],
-      ),
-    ],
+    [makeNode('n1', 'Multi-Port', ['in1', 'in2', 'in3', 'in4', 'in5'], ['out1', 'out2', 'out3'])],
     [],
   ),
   config: {

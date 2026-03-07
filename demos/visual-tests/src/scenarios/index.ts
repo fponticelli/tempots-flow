@@ -131,6 +131,4 @@ export const scenariosByCategory = new Map(
   ]),
 )
 
-export const scenarioById = new Map(
-  allScenarios.map((s) => [s.id, s]),
-)
+export const scenarioById = new Map(allScenarios.map((s) => [s.id, s]))

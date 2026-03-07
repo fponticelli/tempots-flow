@@ -158,7 +158,13 @@ export function createStepStrategy(options?: StepOptions): EdgeRoutingStrategy {
         const targetNodeId = edge.targetNodeId ?? edge.edgeId
         const allObs = params.obstacles ?? []
         const collisionObstacles = buildEdgeObstacles(allObs, sourceNodeId, targetNodeId, 0)
-        const routingObstacles = buildEdgeObstacles(allObs, sourceNodeId, targetNodeId, nodePadding, 2)
+        const routingObstacles = buildEdgeObstacles(
+          allObs,
+          sourceNodeId,
+          targetNodeId,
+          nodePadding,
+          2,
+        )
 
         // Compute step waypoints first
         const stepWaypoints = computeStepWaypoints(source, target, offset)

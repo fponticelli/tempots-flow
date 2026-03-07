@@ -1,29 +1,19 @@
 import { html, style, on } from '@tempots/dom'
 import type { TNode } from '@tempots/dom'
 import { scenariosByCategory } from '../scenarios'
-import {
-  searchQuery,
-  statusFilter,
-  categoryFilter,
-  navigateTo,
-  filteredScenarios,
-} from '../state'
+import { searchQuery, statusFilter, categoryFilter, navigateTo, filteredScenarios } from '../state'
 import type { TestStatus } from '../types'
 
-function FilterButton(
-  label: string,
-  value: TestStatus | 'all',
-  color: string,
-): TNode {
+function FilterButton(label: string, value: TestStatus | 'all', color: string): TNode {
   const isActive = statusFilter.map((f) => f === value)
 
   return html.button(
     style.padding('4px 8px'),
     style.borderRadius('4px'),
     style.border('1px solid'),
-    style.borderColor(isActive.map((a): string => a ? color : '#333')),
-    style.background(isActive.map((a): string => a ? `${color}20` : 'transparent')),
-    style.color(isActive.map((a): string => a ? color : '#888')),
+    style.borderColor(isActive.map((a): string => (a ? color : '#333'))),
+    style.background(isActive.map((a): string => (a ? `${color}20` : 'transparent'))),
+    style.color(isActive.map((a): string => (a ? color : '#888'))),
     style.cursor('pointer'),
     style.fontSize('11px'),
     style.fontWeight('600'),
@@ -102,9 +92,11 @@ export function NavSidebar(): TNode {
         style.borderRadius('4px'),
         style.cursor('pointer'),
         style.fontSize('13px'),
-        style.color(categoryFilter.map((c): string => c === null ? '#e0e0e0' : '#aaa')),
-        style.background(categoryFilter.map((c): string => c === null ? '#ffffff10' : 'transparent')),
-        style.fontWeight(categoryFilter.map((c): string => c === null ? '600' : '400')),
+        style.color(categoryFilter.map((c): string => (c === null ? '#e0e0e0' : '#aaa'))),
+        style.background(
+          categoryFilter.map((c): string => (c === null ? '#ffffff10' : 'transparent')),
+        ),
+        style.fontWeight(categoryFilter.map((c): string => (c === null ? '600' : '400'))),
         on.click(() => categoryFilter.set(null)),
         'All',
       ),
@@ -117,20 +109,16 @@ export function NavSidebar(): TNode {
           style.borderRadius('4px'),
           style.cursor('pointer'),
           style.fontSize('13px'),
-          style.color(isActive.map((a): string => a ? '#e0e0e0' : '#aaa')),
-          style.background(isActive.map((a): string => a ? '#ffffff10' : 'transparent')),
-          style.fontWeight(isActive.map((a): string => a ? '600' : '400')),
+          style.color(isActive.map((a): string => (a ? '#e0e0e0' : '#aaa'))),
+          style.background(isActive.map((a): string => (a ? '#ffffff10' : 'transparent'))),
+          style.fontWeight(isActive.map((a): string => (a ? '600' : '400'))),
           style.display('flex'),
           style.justifyContent('space-between'),
           style.alignItems('center'),
           on.click(() => categoryFilter.set(category)),
 
           html.span(category),
-          html.span(
-            style.fontSize('11px'),
-            style.color('#666'),
-            `${scenarios.length}`,
-          ),
+          html.span(style.fontSize('11px'), style.color('#666'), `${scenarios.length}`),
         )
       }),
     ),

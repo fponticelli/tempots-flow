@@ -1,9 +1,4 @@
-import type {
-  GraphNode,
-  GraphEdge,
-  Graph,
-  PortDefinition,
-} from '@tempots/flow'
+import type { GraphNode, GraphEdge, Graph, PortDefinition } from '@tempots/flow'
 
 export interface SimpleNodeData {
   readonly label: string
@@ -28,10 +23,7 @@ export const makeNode = (
 ): GraphNode<SimpleNodeData> => ({
   id,
   data: { label },
-  ports: [
-    ...inputs.map((p) => makePort(p, 'input')),
-    ...outputs.map((p) => makePort(p, 'output')),
-  ],
+  ports: [...inputs.map((p) => makePort(p, 'input')), ...outputs.map((p) => makePort(p, 'output'))],
 })
 
 export const makeTypedNode = (

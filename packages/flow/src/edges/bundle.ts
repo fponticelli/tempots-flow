@@ -199,10 +199,12 @@ function computeBundledPaths(
     // Keep control points aligned with port exit direction so L→C transition
     // is smooth (tangent-continuous). Centroid pull is only applied along the
     // perpendicular axis to preserve the exit/entry tangent direction.
-    const perpPull = fanOffset + ((centroidX - natCp1x) * fan.perpX + (centroidY - natCp1y) * fan.perpY) * strength
+    const perpPull =
+      fanOffset + ((centroidX - natCp1x) * fan.perpX + (centroidY - natCp1y) * fan.perpY) * strength
     const cp1x = natCp1x + fan.perpX * perpPull
     const cp1y = natCp1y + fan.perpY * perpPull
-    const perpPull2 = fanOffset + ((centroidX - natCp2x) * fan.perpX + (centroidY - natCp2y) * fan.perpY) * strength
+    const perpPull2 =
+      fanOffset + ((centroidX - natCp2x) * fan.perpX + (centroidY - natCp2y) * fan.perpY) * strength
     const cp2x = natCp2x + fan.perpX * perpPull2
     const cp2y = natCp2y + fan.perpY * perpPull2
 

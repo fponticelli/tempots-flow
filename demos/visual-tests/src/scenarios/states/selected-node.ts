@@ -9,10 +9,7 @@ export const selectedNodeScenario: TestScenario = {
   category: 'states',
   description: 'Two nodes with one edge, node A is selected',
   graph: makeGraph(
-    [
-      makeNode('a', 'Source', [], ['out']),
-      makeNode('b', 'Target', ['in'], []),
-    ],
+    [makeNode('a', 'Source', [], ['out']), makeNode('b', 'Target', ['in'], [])],
     [makeEdge('e1', 'a', 'out', 'b', 'in')],
   ),
   config: {

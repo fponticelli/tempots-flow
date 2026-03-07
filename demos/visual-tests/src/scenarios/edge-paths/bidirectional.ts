@@ -9,14 +9,8 @@ export const bidirectionalScenario: TestScenario = {
   category: 'edge-paths',
   description: 'Two nodes with edges in both directions (A→B and B→A)',
   graph: makeGraph(
-    [
-      makeNode('a', 'Node A', ['in'], ['out']),
-      makeNode('b', 'Node B', ['in'], ['out']),
-    ],
-    [
-      makeEdge('e1', 'a', 'out', 'b', 'in'),
-      makeEdge('e2', 'b', 'out', 'a', 'in'),
-    ],
+    [makeNode('a', 'Node A', ['in'], ['out']), makeNode('b', 'Node B', ['in'], ['out'])],
+    [makeEdge('e1', 'a', 'out', 'b', 'in'), makeEdge('e2', 'b', 'out', 'a', 'in')],
   ),
   config: {
     edgeRouting: createBezierStrategy(),

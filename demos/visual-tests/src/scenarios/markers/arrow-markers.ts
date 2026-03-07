@@ -9,10 +9,7 @@ export const arrowMarkersScenario: TestScenario = {
   category: 'markers',
   description: 'Two nodes with one bezier edge displaying arrow markers',
   graph: makeGraph(
-    [
-      makeNode('a', 'Source', [], ['out']),
-      makeNode('b', 'Target', ['in'], []),
-    ],
+    [makeNode('a', 'Source', [], ['out']), makeNode('b', 'Target', ['in'], [])],
     [makeEdge('e1', 'a', 'out', 'b', 'in')],
   ),
   config: {

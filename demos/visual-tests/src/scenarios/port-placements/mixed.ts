@@ -7,18 +7,14 @@ export const mixedPlacementScenario: TestScenario = {
   id: 'port-placement--mixed',
   name: 'Mixed Placements',
   category: 'port-placements',
-  description:
-    'Three nodes in a vertical layout with vertical port placement',
+  description: 'Three nodes in a vertical layout with vertical port placement',
   graph: makeGraph(
     [
       makeNode('a', 'A', [], ['out']),
       makeNode('b', 'B', ['in'], ['out']),
       makeNode('c', 'C', ['in'], []),
     ],
-    [
-      makeEdge('e1', 'a', 'out', 'b', 'in'),
-      makeEdge('e2', 'b', 'out', 'c', 'in'),
-    ],
+    [makeEdge('e1', 'a', 'out', 'b', 'in'), makeEdge('e2', 'b', 'out', 'c', 'in')],
   ),
   config: {
     edgeRouting: createBezierStrategy(),

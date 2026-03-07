@@ -100,10 +100,7 @@ interface TestResult {
 
 function writeResult(result: TestResult): void {
   fs.mkdirSync(RESULTS_DIR, { recursive: true })
-  fs.writeFileSync(
-    path.join(RESULTS_DIR, `${result.scenarioId}.json`),
-    JSON.stringify(result),
-  )
+  fs.writeFileSync(path.join(RESULTS_DIR, `${result.scenarioId}.json`), JSON.stringify(result))
 }
 
 async function diffAgainstBaseline(
@@ -133,14 +130,9 @@ async function diffAgainstBaseline(
 
   const diff = new PNG({ width, height })
 
-  const diffPixels = pixelmatch(
-    baseline.data,
-    current.data,
-    diff.data,
-    width,
-    height,
-    { threshold },
-  )
+  const diffPixels = pixelmatch(baseline.data, current.data, diff.data, width, height, {
+    threshold,
+  })
 
   const totalPixels = width * height
   const diffPercentage = (diffPixels / totalPixels) * 100
@@ -190,5 +182,4 @@ test.describe('visual regression', () => {
       ).toBeLessThan(MAX_DIFF_PERCENT)
     })
   }
-
 })

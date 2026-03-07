@@ -42,21 +42,15 @@ function ImagePanel(label: string, src: Signal<string>): TNode {
 export function DiffViewer(): TNode {
   const diffMode = prop<DiffMode>('side-by-side')
 
-  const scenario = computed(
-    () => {
-      const id = selectedScenarioId.value
-      return id ? scenarioById.get(id) : undefined
-    },
-    [selectedScenarioId],
-  )
+  const scenario = computed(() => {
+    const id = selectedScenarioId.value
+    return id ? scenarioById.get(id) : undefined
+  }, [selectedScenarioId])
 
-  const result = computed(
-    () => {
-      const id = selectedScenarioId.value
-      return id ? resultsByScenarioId.value.get(id) : undefined
-    },
-    [selectedScenarioId, resultsByScenarioId],
-  )
+  const result = computed(() => {
+    const id = selectedScenarioId.value
+    return id ? resultsByScenarioId.value.get(id) : undefined
+  }, [selectedScenarioId, resultsByScenarioId])
 
   return html.div(
     style.display('flex'),
@@ -99,15 +93,8 @@ export function DiffViewer(): TNode {
 
       // Diff stats
       Ensure(
-        result.map((r) =>
-          r ? `${r.diffPixelCount} px (${r.diffPercentage.toFixed(2)}%)` : null,
-        ),
-        (stats) =>
-          html.span(
-            style.fontSize('13px'),
-            style.color('#888'),
-            stats,
-          ),
+        result.map((r) => (r ? `${r.diffPixelCount} px (${r.diffPercentage.toFixed(2)}%)` : null)),
+        (stats) => html.span(style.fontSize('13px'), style.color('#888'), stats),
       ),
     ),
 
@@ -121,9 +108,9 @@ export function DiffViewer(): TNode {
           style.padding('4px 12px'),
           style.borderRadius('4px'),
           style.border('1px solid'),
-          style.borderColor(diffMode.map((m): string => m === mode ? '#53a8ff' : '#333')),
-          style.background(diffMode.map((m): string => m === mode ? '#53a8ff20' : 'transparent')),
-          style.color(diffMode.map((m): string => m === mode ? '#53a8ff' : '#888')),
+          style.borderColor(diffMode.map((m): string => (m === mode ? '#53a8ff' : '#333'))),
+          style.background(diffMode.map((m): string => (m === mode ? '#53a8ff20' : 'transparent'))),
+          style.color(diffMode.map((m): string => (m === mode ? '#53a8ff' : '#888'))),
           style.cursor('pointer'),
           style.fontSize('12px'),
           on.click(() => diffMode.set(mode)),
@@ -133,26 +120,30 @@ export function DiffViewer(): TNode {
     ),
 
     // Images
-    Ensure(
-      selectedScenarioId,
-      (id) => {
-        const bust = cacheBuster.map((t) => (t ? `?t=${t}` : ''))
-        return html.div(
-          style.display('flex'),
-          style.gap('16px'),
+    Ensure(selectedScenarioId, (id) => {
+      const bust = cacheBuster.map((t) => (t ? `?t=${t}` : ''))
+      return html.div(
+        style.display('flex'),
+        style.gap('16px'),
 
-          ImagePanel('Baseline', bust.map((b) => `/screenshots/baselines/${id.value}.png${b}`)),
-          ImagePanel('Current', bust.map((b) => `/screenshots/current/${id.value}.png${b}`)),
-          ImagePanel('Diff', bust.map((b) => `/screenshots/diffs/${id.value}.png${b}`)),
-        )
-      },
-    ),
+        ImagePanel(
+          'Baseline',
+          bust.map((b) => `/screenshots/baselines/${id.value}.png${b}`),
+        ),
+        ImagePanel(
+          'Current',
+          bust.map((b) => `/screenshots/current/${id.value}.png${b}`),
+        ),
+        ImagePanel(
+          'Diff',
+          bust.map((b) => `/screenshots/diffs/${id.value}.png${b}`),
+        ),
+      )
+    }),
 
     // Approve button
     Ensure(
-      result.map((r) =>
-        r?.status === 'fail' || r?.status === 'new' ? true : null,
-      ),
+      result.map((r) => (r?.status === 'fail' || r?.status === 'new' ? true : null)),
       () =>
         html.button(
           style.padding('8px 20px'),

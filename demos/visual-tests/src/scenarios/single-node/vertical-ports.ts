@@ -7,10 +7,7 @@ export const verticalPortsScenario: TestScenario = {
   name: 'Vertical Ports',
   category: 'single-node',
   description: 'Single node with input ports on top and output ports on bottom',
-  graph: makeGraph(
-    [makeNode('n1', 'Node A', ['in1', 'in2'], ['out1', 'out2'])],
-    [],
-  ),
+  graph: makeGraph([makeNode('n1', 'Node A', ['in1', 'in2'], ['out1', 'out2'])], []),
   config: {
     layout: manualLayout,
     portPlacement: 'vertical',

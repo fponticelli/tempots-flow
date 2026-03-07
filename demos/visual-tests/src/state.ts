@@ -14,61 +14,52 @@ export const categoryFilter = prop<string | null>(null)
 export const testResults = prop<TestResult[]>([])
 export const cacheBuster = prop(0)
 
-export const resultsByScenarioId: Signal<Map<string, TestResult>> = computed(
-  () => {
-    const results = testResults.value
-    return new Map(results.map((r) => [r.scenarioId, r]))
-  },
-  [testResults],
-)
+export const resultsByScenarioId: Signal<Map<string, TestResult>> = computed(() => {
+  const results = testResults.value
+  return new Map(results.map((r) => [r.scenarioId, r]))
+}, [testResults])
 
-export const filteredScenarios: Signal<TestScenario[]> = computed(
-  () => {
-    const query = searchQuery.value.toLowerCase()
-    const filter = statusFilter.value
-    const category = categoryFilter.value
-    const resultsMap = resultsByScenarioId.value
+export const filteredScenarios: Signal<TestScenario[]> = computed(() => {
+  const query = searchQuery.value.toLowerCase()
+  const filter = statusFilter.value
+  const category = categoryFilter.value
+  const resultsMap = resultsByScenarioId.value
 
-    return allScenarios.filter((s) => {
-      if (category && s.category !== category) return false
-      if (query && !s.name.toLowerCase().includes(query) && !s.id.toLowerCase().includes(query)) {
-        return false
-      }
-      if (filter !== 'all') {
-        const result = resultsMap.get(s.id)
-        const status = result?.status ?? 'pending'
-        if (status !== filter) return false
-      }
-      return true
-    })
-  },
-  [searchQuery, statusFilter, categoryFilter, resultsByScenarioId],
-)
+  return allScenarios.filter((s) => {
+    if (category && s.category !== category) return false
+    if (query && !s.name.toLowerCase().includes(query) && !s.id.toLowerCase().includes(query)) {
+      return false
+    }
+    if (filter !== 'all') {
+      const result = resultsMap.get(s.id)
+      const status = result?.status ?? 'pending'
+      if (status !== filter) return false
+    }
+    return true
+  })
+}, [searchQuery, statusFilter, categoryFilter, resultsByScenarioId])
 
 export const categoryCounts: Signal<
   Map<string, { total: number; pass: number; fail: number; new_: number }>
-> = computed(
-  () => {
-    const resultsMap = resultsByScenarioId.value
-    const counts = new Map<string, { total: number; pass: number; fail: number; new_: number }>()
+> = computed(() => {
+  const resultsMap = resultsByScenarioId.value
+  const counts = new Map<string, { total: number; pass: number; fail: number; new_: number }>()
 
-    for (const [category, scenarios] of scenariosByCategory) {
-      let pass = 0
-      let fail = 0
-      let new_ = 0
-      for (const s of scenarios) {
-        const result = resultsMap.get(s.id)
-        if (result?.status === 'pass') pass++
-        else if (result?.status === 'fail') fail++
-        else if (result?.status === 'new') new_++
-      }
-      counts.set(category, { total: scenarios.length, pass, fail, new_ })
+  for (const [category, scenarios] of scenariosByCategory) {
+    let pass = 0
+    let fail = 0
+    let new_ = 0
+    for (const s of scenarios) {
+      const result = resultsMap.get(s.id)
+      if (result?.status === 'pass') pass++
+      else if (result?.status === 'fail') fail++
+      else if (result?.status === 'new') new_++
     }
+    counts.set(category, { total: scenarios.length, pass, fail, new_ })
+  }
 
-    return counts
-  },
-  [resultsByScenarioId],
-)
+  return counts
+}, [resultsByScenarioId])
 
 // Load test results from API
 export async function loadResults(): Promise<void> {
