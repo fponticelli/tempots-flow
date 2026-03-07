@@ -34,6 +34,18 @@ import { hierarchicalTBScenario } from './layouts/hierarchical-tb'
 import { gridLayoutScenario } from './layouts/grid-layout'
 import { treeLayoutScenario } from './layouts/tree-layout'
 
+// Edge paths
+import { bezierPathScenarios } from './edge-paths/bezier-paths'
+import { straightPathScenarios } from './edge-paths/straight-paths'
+import { stepPathScenarios } from './edge-paths/step-paths'
+import { smoothStepPathScenarios } from './edge-paths/smooth-step-paths'
+import { orthogonalPathScenarios } from './edge-paths/orthogonal-paths'
+import { bundledPathScenarios } from './edge-paths/bundled-paths'
+import { fanOutScenario } from './edge-paths/fan-out'
+import { fanInScenario } from './edge-paths/fan-in'
+import { bidirectionalScenario as bidirectionalPathScenario } from './edge-paths/bidirectional'
+import { longDistanceScenario } from './edge-paths/long-distance'
+
 // Obstacles
 import { bezierObstacleScenario } from './obstacles/bezier-obstacle'
 import { straightObstacleScenario } from './obstacles/straight-obstacle'
@@ -83,6 +95,18 @@ export const allScenarios: readonly TestScenario[] = [
   hierarchicalTBScenario,
   gridLayoutScenario,
   treeLayoutScenario,
+
+  // Edge paths
+  ...bezierPathScenarios,
+  ...straightPathScenarios,
+  ...stepPathScenarios,
+  ...smoothStepPathScenarios,
+  ...orthogonalPathScenarios,
+  ...bundledPathScenarios,
+  fanOutScenario,
+  fanInScenario,
+  bidirectionalPathScenario,
+  longDistanceScenario,
 
   // Obstacles
   bezierObstacleScenario,

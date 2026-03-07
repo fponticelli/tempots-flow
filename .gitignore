@@ -9,4 +9,5 @@ coverage/
 # Visual regression test artifacts
 e2e/current/
 e2e/diffs/
+e2e/.results-parts/
 e2e/visual-regression-results.json

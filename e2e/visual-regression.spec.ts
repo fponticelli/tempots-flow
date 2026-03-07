@@ -8,7 +8,7 @@ const MAX_DIFF_PERCENT = 0.5
 const BASELINES_DIR = path.resolve('e2e/baselines')
 const CURRENT_DIR = path.resolve('e2e/current')
 const DIFFS_DIR = path.resolve('e2e/diffs')
-const RESULTS_PATH = path.resolve('e2e/visual-regression-results.json')
+const RESULTS_DIR = path.resolve('e2e/.results-parts')
 
 const scenarioIds = [
   // Single node
@@ -45,6 +45,36 @@ const scenarioIds = [
   'layout--grid',
   'layout--tree',
 
+  // Edge paths
+  'edge-paths--bezier-lr',
+  'edge-paths--bezier-rl',
+  'edge-paths--bezier-tb',
+  'edge-paths--bezier-bt',
+  'edge-paths--straight-lr',
+  'edge-paths--straight-rl',
+  'edge-paths--straight-tb',
+  'edge-paths--straight-bt',
+  'edge-paths--step-lr',
+  'edge-paths--step-rl',
+  'edge-paths--step-tb',
+  'edge-paths--step-bt',
+  'edge-paths--smooth-step-lr',
+  'edge-paths--smooth-step-rl',
+  'edge-paths--smooth-step-tb',
+  'edge-paths--smooth-step-bt',
+  'edge-paths--orthogonal-lr',
+  'edge-paths--orthogonal-rl',
+  'edge-paths--orthogonal-tb',
+  'edge-paths--orthogonal-bt',
+  'edge-paths--bundled-lr',
+  'edge-paths--bundled-rl',
+  'edge-paths--bundled-tb',
+  'edge-paths--bundled-bt',
+  'edge-paths--fan-out',
+  'edge-paths--fan-in',
+  'edge-paths--bidirectional',
+  'edge-paths--long-distance',
+
   // Obstacles
   'obstacle--bezier',
   'obstacle--straight',
@@ -68,7 +98,13 @@ interface TestResult {
   diffPercentage: number
 }
 
-const results: TestResult[] = []
+function writeResult(result: TestResult): void {
+  fs.mkdirSync(RESULTS_DIR, { recursive: true })
+  fs.writeFileSync(
+    path.join(RESULTS_DIR, `${result.scenarioId}.json`),
+    JSON.stringify(result),
+  )
+}
 
 async function diffAgainstBaseline(
   scenarioId: string,
@@ -141,7 +177,7 @@ test.describe('visual regression', () => {
       await container.screenshot({ path: currentPath })
 
       const result = await diffAgainstBaseline(scenarioId, currentPath, THRESHOLD)
-      results.push(result)
+      writeResult(result)
 
       if (result.status === 'new') {
         console.log(`NEW: ${scenarioId} — no baseline, screenshot saved`)
@@ -155,7 +191,4 @@ test.describe('visual regression', () => {
     })
   }
 
-  test.afterAll(() => {
-    fs.writeFileSync(RESULTS_PATH, JSON.stringify(results, null, 2))
-  })
 })
