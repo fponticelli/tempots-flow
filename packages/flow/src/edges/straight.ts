@@ -41,7 +41,7 @@ export function createStraightStrategy(options?: StraightOptions): EdgeRoutingSt
         const targetNodeId = edge.targetNodeId ?? edge.edgeId
         const allObs = params.obstacles ?? []
         const collisionObstacles = buildEdgeObstacles(allObs, sourceNodeId, targetNodeId, 0)
-        const routingObstacles = buildEdgeObstacles(allObs, sourceNodeId, targetNodeId, nodePadding)
+        const routingObstacles = buildEdgeObstacles(allObs, sourceNodeId, targetNodeId, nodePadding, 2)
 
         if (collisionObstacles.length === 0) {
           result.set(edge.edgeId, `M ${source.x} ${source.y} L ${target.x} ${target.y}`)

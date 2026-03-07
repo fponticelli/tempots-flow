@@ -1,5 +1,6 @@
 import { html, style, on, Ensure, attr } from '@tempots/dom'
 import type { TNode } from '@tempots/dom'
+import type { Signal } from '@tempots/core'
 import { prop, computed } from '@tempots/core'
 import { scenarioById } from '../scenarios'
 import {
@@ -8,11 +9,12 @@ import {
   navigateTo,
   approveScenario,
   loadResults,
+  cacheBuster,
 } from '../state'
 
 type DiffMode = 'side-by-side' | 'overlay' | 'blink'
 
-function ImagePanel(label: string, _src: string): TNode {
+function ImagePanel(label: string, src: Signal<string>): TNode {
   return html.div(
     style.display('flex'),
     style.flexDirection('column'),
@@ -32,7 +34,7 @@ function ImagePanel(label: string, _src: string): TNode {
       style.border('1px solid #333'),
       style.borderRadius('4px'),
       style.background('#0a0a0a'),
-      attr.src(_src),
+      attr.src(src),
     ),
   )
 }
@@ -133,15 +135,17 @@ export function DiffViewer(): TNode {
     // Images
     Ensure(
       selectedScenarioId,
-      (id) =>
-        html.div(
+      (id) => {
+        const bust = cacheBuster.map((t) => (t ? `?t=${t}` : ''))
+        return html.div(
           style.display('flex'),
           style.gap('16px'),
 
-          ImagePanel('Baseline', `/screenshots/baselines/${id.value}.png`),
-          ImagePanel('Current', `/screenshots/current/${id.value}.png`),
-          ImagePanel('Diff', `/screenshots/diffs/${id.value}.png`),
-        ),
+          ImagePanel('Baseline', bust.map((b) => `/screenshots/baselines/${id.value}.png${b}`)),
+          ImagePanel('Current', bust.map((b) => `/screenshots/current/${id.value}.png${b}`)),
+          ImagePanel('Diff', bust.map((b) => `/screenshots/diffs/${id.value}.png${b}`)),
+        )
+      },
     ),
 
     // Approve button
@@ -166,6 +170,7 @@ export function DiffViewer(): TNode {
               const ok = await approveScenario(id)
               if (ok) {
                 await loadResults()
+                cacheBuster.set(Date.now())
               }
             }
           }),

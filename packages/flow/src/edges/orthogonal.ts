@@ -42,6 +42,7 @@ export function createOrthogonalStrategy(options?: OrthogonalOptions): EdgeRouti
           sourceNodeId,
           targetNodeId,
           nodePadding,
+          2,
         )
 
         const waypoints = computeOrthogonalWaypoints(

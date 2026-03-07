@@ -12,6 +12,7 @@ export const searchQuery = prop('')
 export const statusFilter = prop<TestStatus | 'all'>('all')
 export const categoryFilter = prop<string | null>(null)
 export const testResults = prop<TestResult[]>([])
+export const cacheBuster = prop(0)
 
 export const resultsByScenarioId: Signal<Map<string, TestResult>> = computed(
   () => {

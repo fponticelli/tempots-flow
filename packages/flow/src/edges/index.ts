@@ -18,7 +18,6 @@ export { createEdgePathsSignal } from './compute-edge-paths'
 // Collision detection utilities for custom strategy authors
 export {
   buildEdgeObstacles,
-  buildSelfNodeRects,
   polylineHitsObstacle,
   approximatePathAsPolyline,
   catmullRomThroughWaypoints,

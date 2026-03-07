@@ -329,6 +329,15 @@ export function computeOrthogonalWaypoints(
  * Convert EdgeBatchRoutingParams obstacles to Rect[], filtering out source/target nodes
  * and inflating by the requested padding.
  */
+/**
+ * Build obstacle rects for edge routing.
+ *
+ * - Source/target nodes are **excluded** by default (selfNodeInset omitted)
+ *   so collision detection doesn't false-trigger on ports at node boundaries.
+ * - When `selfNodeInset` is provided (e.g. 2), source/target nodes are
+ *   **included** with their rect shrunk by that amount on each side. Use this
+ *   for routing obstacles so rerouted paths avoid crossing endpoint nodes.
+ */
 export function buildEdgeObstacles(
   allObstacles: readonly {
     readonly nodeId: string
@@ -338,54 +347,21 @@ export function buildEdgeObstacles(
   sourceNodeId: string,
   targetNodeId: string,
   padding: number,
+  selfNodeInset?: number,
 ): Rect[] {
-  const rects: Rect[] = allObstacles
-    .filter((obs) => obs.nodeId !== sourceNodeId && obs.nodeId !== targetNodeId)
-    .map((obs) => ({
-      x: obs.position.x - padding,
-      y: obs.position.y - padding,
-      w: obs.dimensions.width + padding * 2,
-      h: obs.dimensions.height + padding * 2,
-    }))
-  return rects
-}
-
-/**
- * Build collision and routing obstacle rects for the source and target nodes
- * themselves. The collision set uses a small inset so ports sitting exactly at
- * node edges aren't falsely detected. The routing set inflates by `padding`.
- */
-export function buildSelfNodeRects(
-  allObstacles: readonly {
-    readonly nodeId: string
-    readonly position: { x: number; y: number }
-    readonly dimensions: { width: number; height: number }
-  }[],
-  sourceNodeId: string,
-  targetNodeId: string,
-  padding: number,
-): { collision: Rect[]; routing: Rect[] } {
-  const collision: Rect[] = []
-  const routing: Rect[] = []
-
+  const result: Rect[] = []
   for (const obs of allObstacles) {
-    if (obs.nodeId !== sourceNodeId && obs.nodeId !== targetNodeId) continue
-    const inset = Math.min(2, Math.min(obs.dimensions.width, obs.dimensions.height) / 4)
-    collision.push({
-      x: obs.position.x + inset,
-      y: obs.position.y + inset,
-      w: obs.dimensions.width - inset * 2,
-      h: obs.dimensions.height - inset * 2,
-    })
-    routing.push({
-      x: obs.position.x - padding,
-      y: obs.position.y - padding,
-      w: obs.dimensions.width + padding * 2,
-      h: obs.dimensions.height + padding * 2,
+    const isSelf = obs.nodeId === sourceNodeId || obs.nodeId === targetNodeId
+    if (isSelf && selfNodeInset === undefined) continue
+    const p = isSelf ? -(selfNodeInset ?? 0) : padding
+    result.push({
+      x: obs.position.x - p,
+      y: obs.position.y - p,
+      w: obs.dimensions.width + p * 2,
+      h: obs.dimensions.height + p * 2,
     })
   }
-
-  return { collision, routing }
+  return result
 }
 
 /** Approximate a cubic bezier as a polyline using de Casteljau subdivision.
@@ -538,14 +514,16 @@ export function computeReroutedBezier(
     obsMaxY = Math.max(obsMaxY, obs.y + obs.h)
   }
 
-  const midX = (source.x + target.x) / 2
-  const midY = (source.y + target.y) / 2
   const validationMargin = Math.max(0, clearance - 1)
   const sourceH = source.side === 'left' || source.side === 'right'
   const targetH = target.side === 'left' || target.side === 'right'
 
-  // Two-segment cubic bezier through a via point, detouring in Y
-  const buildYDetour = (routeY: number): string => {
+  const midX = (source.x + target.x) / 2
+  const midY = (source.y + target.y) / 2
+
+  // Two-segment cubic bezier through a via point, detouring in Y.
+  // Produces smooth flowing curves but may sweep through self-nodes.
+  const buildYDetour2 = (routeY: number): string => {
     const viaX = midX
     const dirX = source.x <= target.x ? 1 : -1
     const halfSpan = Math.abs(viaX - source.x)
@@ -557,8 +535,8 @@ export function computeReroutedBezier(
     ].join(' ')
   }
 
-  // Two-segment cubic bezier through a via point, detouring in X
-  const buildXDetour = (routeX: number): string => {
+  // Two-segment cubic bezier through a via point, detouring in X.
+  const buildXDetour2 = (routeX: number): string => {
     const viaY = midY
     const dirY = source.y <= target.y ? 1 : -1
     const halfSpan = Math.abs(viaY - source.y)
@@ -567,6 +545,58 @@ export function computeReroutedBezier(
       `M ${source.x} ${source.y}`,
       `C ${source.x + sc.dx} ${source.y + sc.dy}, ${routeX} ${viaY - dirY * cpDist}, ${routeX} ${viaY}`,
       `C ${routeX} ${viaY + dirY * cpDist}, ${target.x + tc.dx} ${target.y + tc.dy}, ${target.x} ${target.y}`,
+    ].join(' ')
+  }
+
+  // Three-segment cubic bezier detouring in Y.
+  // Exits port, curves to detour Y, travels horizontally, curves back to target.
+  // Safer for self-node avoidance since it follows the exit direction first.
+  const buildYDetour3 = (routeY: number): string => {
+    const exitX = source.x + sc.dx
+    const exitY = source.y + sc.dy
+    const entryX = target.x + tc.dx
+    const entryY = target.y + tc.dy
+    const via1 = { x: exitX, y: routeY }
+    const via2 = { x: entryX, y: routeY }
+
+    const dirRouteY = Math.sign(routeY - source.y) || 1
+    const dirBackY = Math.sign(target.y - routeY) || -1
+    const dirX = Math.sign(via2.x - via1.x) || 1
+    const spanX = Math.abs(via2.x - via1.x)
+    const cpDistH = Math.max(controlOffset, spanX * 0.35)
+    const cpDistV1 = Math.max(controlOffset * 0.5, Math.abs(routeY - exitY) * 0.45)
+    const cpDistV2 = Math.max(controlOffset * 0.5, Math.abs(routeY - entryY) * 0.45)
+
+    return [
+      `M ${source.x} ${source.y}`,
+      `C ${exitX} ${exitY}, ${via1.x} ${via1.y - dirRouteY * cpDistV1}, ${via1.x} ${via1.y}`,
+      `C ${via1.x + dirX * cpDistH} ${via1.y}, ${via2.x - dirX * cpDistH} ${via2.y}, ${via2.x} ${via2.y}`,
+      `C ${via2.x} ${via2.y + dirBackY * cpDistV2}, ${entryX} ${entryY}, ${target.x} ${target.y}`,
+    ].join(' ')
+  }
+
+  // Three-segment cubic bezier detouring in X.
+  const buildXDetour3 = (routeX: number): string => {
+    const exitX = source.x + sc.dx
+    const exitY = source.y + sc.dy
+    const entryX = target.x + tc.dx
+    const entryY = target.y + tc.dy
+    const via1 = { x: routeX, y: exitY }
+    const via2 = { x: routeX, y: entryY }
+
+    const dirRouteX = Math.sign(routeX - source.x) || 1
+    const dirBackX = Math.sign(target.x - routeX) || -1
+    const dirY = Math.sign(via2.y - via1.y) || 1
+    const spanY = Math.abs(via2.y - via1.y)
+    const cpDistV = Math.max(controlOffset, spanY * 0.35)
+    const cpDistH1 = Math.max(controlOffset * 0.5, Math.abs(routeX - exitX) * 0.45)
+    const cpDistH2 = Math.max(controlOffset * 0.5, Math.abs(routeX - entryX) * 0.45)
+
+    return [
+      `M ${source.x} ${source.y}`,
+      `C ${exitX} ${exitY}, ${via1.x - dirRouteX * cpDistH1} ${via1.y}, ${via1.x} ${via1.y}`,
+      `C ${via1.x} ${via1.y + dirY * cpDistV}, ${via2.x} ${via2.y - dirY * cpDistV}, ${via2.x} ${via2.y}`,
+      `C ${via2.x + dirBackX * cpDistH2} ${via2.y}, ${entryX} ${entryY}, ${target.x} ${target.y}`,
     ].join(' ')
   }
 
@@ -601,17 +631,26 @@ export function computeReroutedBezier(
   const rightBumpX = obsMaxX + bump
 
   type Builder = () => string
+  // Two-segment (smooth) candidates first, then three-segment (self-node safe) fallbacks
   const yCandidates: Builder[] = [
-    () => buildYDetour(aboveY),
-    () => buildYDetour(belowY),
-    () => buildYDetour(aboveBumpY),
-    () => buildYDetour(belowBumpY),
+    () => buildYDetour2(aboveY),
+    () => buildYDetour2(belowY),
+    () => buildYDetour2(aboveBumpY),
+    () => buildYDetour2(belowBumpY),
+    () => buildYDetour3(aboveY),
+    () => buildYDetour3(belowY),
+    () => buildYDetour3(aboveBumpY),
+    () => buildYDetour3(belowBumpY),
   ]
   const xCandidates: Builder[] = [
-    () => buildXDetour(leftX),
-    () => buildXDetour(rightX),
-    () => buildXDetour(leftBumpX),
-    () => buildXDetour(rightBumpX),
+    () => buildXDetour2(leftX),
+    () => buildXDetour2(rightX),
+    () => buildXDetour2(leftBumpX),
+    () => buildXDetour2(rightBumpX),
+    () => buildXDetour3(leftX),
+    () => buildXDetour3(rightX),
+    () => buildXDetour3(leftBumpX),
+    () => buildXDetour3(rightBumpX),
   ]
 
   // Choose detour axis based on both port orientation AND node arrangement.

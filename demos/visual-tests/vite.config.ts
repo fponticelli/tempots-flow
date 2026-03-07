@@ -48,6 +48,32 @@ function approvalApiPlugin() {
           if (fs.existsSync(currentPath)) {
             fs.mkdirSync(path.dirname(baselinePath), { recursive: true })
             fs.copyFileSync(currentPath, baselinePath)
+
+            // Update results JSON to reflect the approval
+            const resultsPath = path.resolve(__dirname, '../../e2e/visual-regression-results.json')
+            if (fs.existsSync(resultsPath)) {
+              try {
+                const results = JSON.parse(fs.readFileSync(resultsPath, 'utf-8'))
+                if (Array.isArray(results)) {
+                  const entry = results.find((r: { scenarioId?: string }) => r.scenarioId === scenarioId)
+                  if (entry) {
+                    entry.status = 'pass'
+                    entry.diffPixelCount = 0
+                    entry.diffPercentage = 0
+                  }
+                  fs.writeFileSync(resultsPath, JSON.stringify(results, null, 2))
+                }
+              } catch {
+                // Ignore JSON parse errors
+              }
+            }
+
+            // Delete stale diff image
+            const diffPath = path.resolve(__dirname, `../../e2e/diffs/${scenarioId}.png`)
+            if (fs.existsSync(diffPath)) {
+              fs.unlinkSync(diffPath)
+            }
+
             res.end('ok')
           } else {
             res.statusCode = 404

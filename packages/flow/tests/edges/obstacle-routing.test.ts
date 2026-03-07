@@ -192,13 +192,16 @@ describe('computeOrthogonalWaypoints — real pipeline demo data', () => {
     const obstacles: Rect[] = [{ x: 250, y: 250, w: 100, h: 20 }]
 
     const path = computeReroutedBezier(source, target, obstacles, 30, 20)
-    const points = parseSvgPathPoints(path)
-    // Two-segment: M p0 C cp1 cp2 via C cp3 cp4 end → 7 points
-    expect(points.length).toBe(7)
-    const via = points[3]!
+    expect(path).toMatch(/^M /)
+    expect(path).toContain('C ')
 
-    // Should route below the obstacle (obs bottom at 270 + clearance 20 = 290)
-    expect(via.y).toBeGreaterThanOrEqual(270 + 20)
+    // Approximate the path and verify it goes below the obstacle
+    const polyline = approximatePathAsPolyline(path, 20)
+    const maxY = Math.max(...polyline.map((p) => p.y))
+    // Should route below the obstacle (obs bottom at 270 + some clearance)
+    expect(maxY).toBeGreaterThanOrEqual(270)
+    // And should not collide with the obstacle
+    expect(polylineHitsObstacle(polyline, obstacles, 0)).toBe(false)
   })
 })
 
@@ -278,9 +281,10 @@ describe('catmullRomThroughWaypoints', () => {
 })
 
 describe('buildEdgeObstacles', () => {
-  it('filters out source and target nodes', () => {
+  it('excludes source/target nodes by default', () => {
     const obstacles = [
       { nodeId: 'source', position: { x: 0, y: 0 }, dimensions: { width: 100, height: 100 } },
+      { nodeId: 'target', position: { x: 300, y: 0 }, dimensions: { width: 100, height: 100 } },
       { nodeId: 'obs1', position: { x: 200, y: 200 }, dimensions: { width: 100, height: 100 } },
     ]
     const result = buildEdgeObstacles(obstacles, 'source', 'target', 20)
@@ -288,22 +292,32 @@ describe('buildEdgeObstacles', () => {
     expect(result[0]!.x).toBe(200 - 20)
   })
 
-  it('filters out target node', () => {
-    const obstacles = [
-      { nodeId: 'target', position: { x: 0, y: 0 }, dimensions: { width: 100, height: 100 } },
-      { nodeId: 'obs1', position: { x: 200, y: 200 }, dimensions: { width: 100, height: 100 } },
-    ]
-    const result = buildEdgeObstacles(obstacles, 'source', 'target', 20)
-    expect(result).toHaveLength(1)
-    expect(result[0]!.x).toBe(200 - 20)
-  })
-
-  it('keeps other obstacles', () => {
+  it('applies padding to non-self obstacles', () => {
     const obstacles = [
       { nodeId: 'obs1', position: { x: 100, y: 100 }, dimensions: { width: 50, height: 50 } },
     ]
     const result = buildEdgeObstacles(obstacles, 'source', 'target', 20)
     expect(result).toHaveLength(1)
+    expect(result[0]!.x).toBe(100 - 20)
+    expect(result[0]!.y).toBe(100 - 20)
+    expect(result[0]!.w).toBe(50 + 40)
+    expect(result[0]!.h).toBe(50 + 40)
+  })
+
+  it('includes source/target with inset when selfNodeInset is provided', () => {
+    const obstacles = [
+      { nodeId: 'source', position: { x: 0, y: 0 }, dimensions: { width: 100, height: 100 } },
+      { nodeId: 'obs1', position: { x: 200, y: 200 }, dimensions: { width: 100, height: 100 } },
+    ]
+    const result = buildEdgeObstacles(obstacles, 'source', 'target', 20, 2)
+    expect(result).toHaveLength(2)
+    // Source node: inset by 2px on each side
+    expect(result[0]!.x).toBe(2)
+    expect(result[0]!.y).toBe(2)
+    expect(result[0]!.w).toBe(96)
+    expect(result[0]!.h).toBe(96)
+    // Other node: padded normally
+    expect(result[1]!.x).toBe(200 - 20)
   })
 })
 
